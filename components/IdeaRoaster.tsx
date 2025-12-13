@@ -1,12 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { roastUserIdea } from '../services/geminiService';
 import { FireIcon } from '@heroicons/react/24/solid';
 import ReactMarkdown from 'react-markdown';
+
+const FirePit: React.FC = () => {
+  // Generate random particles for the fire
+  const particles = Array.from({ length: 40 }).map((_, i) => ({
+    id: i,
+    left: `${Math.random() * 100}%`,
+    animationDelay: `${Math.random() * 2}s`,
+    animationDuration: `${1 + Math.random() * 2}s`,
+    size: `${10 + Math.random() * 40}px`,
+    bgClass: Math.random() > 0.6 ? 'bg-orange-500' : (Math.random() > 0.3 ? 'bg-red-600' : 'bg-yellow-400')
+  }));
+
+  return (
+    <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-0 animate-fade-in" style={{ animationDelay: '1.2s' }}>
+      {/* Glow Base */}
+      <div className="absolute bottom-0 left-0 right-0 h-3/4 bg-gradient-to-t from-red-900/50 via-orange-800/20 to-transparent"></div>
+      
+      {/* Particles */}
+      {particles.map(p => (
+        <div
+          key={p.id}
+          className={`absolute bottom-0 rounded-full blur-md opacity-0 animate-fire-rise ${p.bgClass}`}
+          style={{
+            left: p.left,
+            width: p.size,
+            height: p.size,
+            animationDelay: p.animationDelay,
+            animationDuration: p.animationDuration
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 const IdeaRoaster: React.FC = () => {
   const [input, setInput] = useState('');
   const [analysis, setAnalysis] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showFire, setShowFire] = useState(false);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    if (loading) {
+      // Show fire 1 second into the 2.5s text burn animation
+      timer = setTimeout(() => {
+        setShowFire(true);
+      }, 1000);
+    } else {
+      setShowFire(false);
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,16 +97,19 @@ const IdeaRoaster: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="mb-8 relative group">
-                <div className="relative overflow-hidden rounded-sm">
+                <div className="relative overflow-hidden rounded-sm bg-black/40 border border-gray-800 focus-within:border-tower-accent focus-within:ring-1 focus-within:ring-tower-accent transition-all">
                     
+                    {/* Fire Effect Container (Behind Text) */}
+                    {showFire && <FirePit />}
+
                     {/* Textarea with Burning Animation */}
                     <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="e.g., Uber for walking dogs but the dogs walk you..."
                     disabled={loading}
-                    className={`w-full h-48 bg-black/40 backdrop-blur-sm border border-gray-800 p-6 font-mono focus:border-tower-accent focus:ring-1 focus:ring-tower-accent outline-none transition-all resize-none rounded-sm placeholder:text-gray-700 text-lg leading-relaxed relative z-10
-                        ${loading ? 'animate-text-burn border-tower-accent/50' : 'text-gray-200'}
+                    className={`w-full h-48 bg-transparent p-6 font-mono outline-none transition-all resize-none rounded-sm placeholder:text-gray-700 text-lg leading-relaxed relative z-10
+                        ${loading ? 'animate-text-burn' : 'text-gray-200'}
                     `}
                     />
                     

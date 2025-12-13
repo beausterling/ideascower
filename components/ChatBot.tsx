@@ -58,7 +58,7 @@ const ChatBot: React.FC = () => {
          }
       }
     } catch (error) {
-      console.error(error);
+      console.error("Chat Error:", error instanceof Error ? error.message : String(error));
       setMessages(prev => [...prev, { role: 'model', text: "Error: I've lost my train of thought." }]);
     } finally {
       setIsTyping(false);

@@ -27,6 +27,16 @@
     <meta property="twitter:description" content="Don't build that. Submit your idea to the Incinerator or browse our daily archive of failure.">
     <meta property="twitter:image" content="https://raw.githubusercontent.com/beausterling/ideascower/4c6e1e1e8cf5f4be09ace4a45deedd45ae7e83f0/lava-ball-final.png">
 
+    <!-- Suppress Tailwind CDN warning for production usage in this no-build setup -->
+    <script>
+      const originalWarn = console.warn;
+      console.warn = (...args) => {
+        if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com should not be used in production')) {
+          return;
+        }
+        originalWarn.apply(console, args);
+      };
+    </script>
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <script>
@@ -50,6 +60,8 @@
               'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
               'fade-in': 'fadeIn 0.5s ease-out forwards',
+              'text-burn': 'textBurn 2.5s ease-in-out forwards',
+              'fire-rise': 'fireRise 1.5s ease-in infinite',
             },
             keyframes: {
               fadeInUp: {
@@ -59,6 +71,20 @@
               fadeIn: {
                 '0%': { opacity: '0' },
                 '100%': { opacity: '1' },
+              },
+              textBurn: {
+                '0%': { color: '#e5e5e5', opacity: '1', filter: 'blur(0px)' },
+                '20%': { color: '#ffeb3b', textShadow: '0 0 5px #ff9800', filter: 'blur(0.5px)' }, 
+                '40%': { color: '#ff5722', opacity: '0.9', textShadow: '0 0 10px #f44336', filter: 'blur(1px)' },
+                '60%': { color: '#3e2723', opacity: '0.6', textShadow: 'none', filter: 'blur(2px)' },
+                '80%': { color: '#000000', opacity: '0.2', filter: 'blur(3px)' },
+                '100%': { color: 'transparent', opacity: '0', filter: 'blur(4px)' }
+              },
+              fireRise: {
+                '0%': { transform: 'translateY(120%) scale(1)', opacity: '0' },
+                '20%': { opacity: '0.8' },
+                '80%': { opacity: '0.6' },
+                '100%': { transform: 'translateY(-20%) scale(0.5)', opacity: '0' }
               }
             }
           }
@@ -91,14 +117,17 @@
     "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
-    "react-markdown": "https://esm.sh/react-markdown@9?deps=react@19.2.3",
     "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
-    "@heroicons/react/": "https://esm.sh/@heroicons/react@^2.2.0/"
+    "@heroicons/react/": "https://esm.sh/@heroicons/react@^2.2.0/",
+    "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
+    "vite": "https://esm.sh/vite@^7.2.7",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
 </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

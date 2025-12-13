@@ -58,7 +58,7 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
           setLoading(false);
           return;
         } catch (e) {
-          console.error("Failed to parse stored idea", e);
+          console.error("Failed to parse stored idea", e instanceof Error ? e.message : String(e));
         }
       }
 
@@ -68,7 +68,7 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
         localStorage.setItem(storageKey, JSON.stringify(data));
         setIdea(data);
       } catch (error) {
-        console.error("Failed to fetch daily idea", error);
+        console.error("Failed to fetch daily idea", error instanceof Error ? error.message : String(error));
       } finally {
         setLoading(false);
       }
@@ -81,7 +81,7 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
     return (
       <div className="w-full max-w-4xl mx-auto p-6 flex flex-col items-center justify-center min-h-[400px]">
         <div className="w-16 h-16 border-4 border-t-transparent border-tower-accent rounded-full animate-spin mb-6"></div>
-        <p className="font-mono text-lg tracking-widest text-tower-accent animate-pulse">
+        <p className="font-mono text-lg tracking-widest text-tower-accent animate-pulse text-center">
            {isToday ? 'CALCULATING FAILURE VECTORS...' : 'RETRIEVING ARCHIVAL DATA...'}
         </p>
       </div>
