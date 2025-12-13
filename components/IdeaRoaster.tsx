@@ -5,25 +5,26 @@ import ReactMarkdown from 'react-markdown';
 
 const FirePit: React.FC = () => {
   // Generate random particles for the fire
-  const particles = Array.from({ length: 40 }).map((_, i) => ({
+  const particles = Array.from({ length: 60 }).map((_, i) => ({
     id: i,
     left: `${Math.random() * 100}%`,
     animationDelay: `${Math.random() * 2}s`,
-    animationDuration: `${1 + Math.random() * 2}s`,
-    size: `${10 + Math.random() * 40}px`,
-    bgClass: Math.random() > 0.6 ? 'bg-orange-500' : (Math.random() > 0.3 ? 'bg-red-600' : 'bg-yellow-400')
+    animationDuration: `${0.6 + Math.random() * 1.2}s`, // Faster, flicker-like
+    size: `${4 + Math.random() * 20}px`, // Varied sizes, some very small/sharp
+    // Add white and bright yellow for "hot" core look
+    bgClass: Math.random() > 0.8 ? 'bg-white' : (Math.random() > 0.6 ? 'bg-yellow-200' : (Math.random() > 0.3 ? 'bg-orange-500' : 'bg-red-600'))
   }));
 
   return (
-    <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-0 animate-fade-in" style={{ animationDelay: '1.2s' }}>
-      {/* Glow Base */}
-      <div className="absolute bottom-0 left-0 right-0 h-3/4 bg-gradient-to-t from-red-900/50 via-orange-800/20 to-transparent"></div>
+    <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-0 animate-fade-in" style={{ animationDelay: '1.0s' }}>
+      {/* Glow Base - Deep red underglow */}
+      <div className="absolute bottom-0 left-0 right-0 h-full bg-gradient-to-t from-red-600/40 via-orange-900/10 to-transparent mix-blend-screen"></div>
       
-      {/* Particles */}
+      {/* Particles - Sharper with mix-blend-plus-lighter for that 'blown out' fire look */}
       {particles.map(p => (
         <div
           key={p.id}
-          className={`absolute bottom-0 rounded-full blur-md opacity-0 animate-fire-rise ${p.bgClass}`}
+          className={`absolute bottom-0 rounded-full blur-[0.5px] opacity-0 animate-fire-rise mix-blend-plus-lighter ${p.bgClass}`}
           style={{
             left: p.left,
             width: p.size,
@@ -46,10 +47,10 @@ const IdeaRoaster: React.FC = () => {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     if (loading) {
-      // Show fire 1 second into the 2.5s text burn animation
+      // Show fire almost immediately to catch the falling text
       timer = setTimeout(() => {
         setShowFire(true);
-      }, 1000);
+      }, 500);
     } else {
       setShowFire(false);
     }
@@ -63,8 +64,8 @@ const IdeaRoaster: React.FC = () => {
     setLoading(true);
     setAnalysis('');
     
-    // We keep the input in state to allow the animation to play on the text,
-    // but we will clear it after the result comes back to complete the "burnt away" effect.
+    // The text burns and falls. We clear it from the UI after the animation completes visually,
+    // but we keep the state momentarily to allow the animation to play out on the existing text.
     
     const result = await roastUserIdea(input);
     setAnalysis(result);
@@ -78,9 +79,7 @@ const IdeaRoaster: React.FC = () => {
       {/* Main Container Card */}
       <div className="relative border border-gray-800 bg-[#080808] overflow-hidden shadow-2xl transition-all duration-500">
         
-        {/* The "Red Gradient Thing" - Ambient Glow 
-            Static now, removed the scale animation on loading to keep focus on text.
-        */}
+        {/* The "Red Gradient Thing" - Ambient Glow */}
         <div className="absolute -top-[150px] -left-[150px] w-[600px] h-[600px] rounded-full blur-[120px] pointer-events-none bg-tower-accent/10"></div>
         
         {/* Secondary Glow (Bottom Right) */}
@@ -88,7 +87,6 @@ const IdeaRoaster: React.FC = () => {
 
         <div className="relative z-10 p-8 md:p-12">
             
-            {/* Header - Removed Icon */}
             <div className="text-center mb-10">
                 <h2 className="text-4xl font-serif text-white mb-3 tracking-tight">The Incinerator</h2>
                 <p className="text-gray-400 font-mono text-sm max-w-lg mx-auto leading-relaxed">
