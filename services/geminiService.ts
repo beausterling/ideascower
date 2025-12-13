@@ -11,8 +11,10 @@ const THINKING_BUDGET = 32768;
 /**
  * Generates a "Bad Idea of the Day".
  * It constructs a plausible-sounding startup idea that is fundamentally flawed.
+ * 
+ * Uses the provided date (or today) as a deterministic seed.
  */
-export const getDailyBadIdea = async (): Promise<BadIdea> => {
+export const getDailyBadIdea = async (targetDate?: Date): Promise<BadIdea> => {
   const schema: Schema = {
     type: Type.OBJECT,
     properties: {
@@ -24,6 +26,13 @@ export const getDailyBadIdea = async (): Promise<BadIdea> => {
     required: ["title", "pitch", "fatalFlaw", "verdict"]
   };
 
+  // Use the target date or default to now
+  const dateObj = targetDate || new Date();
+  
+  // Calculate a deterministic seed based on the UTC Date (e.g. 20251024)
+  // This ensures that asking for "Oct 24, 2025" always yields the same result.
+  const seed = dateObj.getUTCFullYear() * 10000 + (dateObj.getUTCMonth() + 1) * 100 + dateObj.getUTCDate();
+
   try {
     const response = await ai.models.generateContent({
       model: REASONING_MODEL,
@@ -31,7 +40,9 @@ export const getDailyBadIdea = async (): Promise<BadIdea> => {
       config: {
         thinkingConfig: { thinkingBudget: THINKING_BUDGET },
         responseMimeType: "application/json",
-        responseSchema: schema
+        responseSchema: schema,
+        seed: seed, // deterministic output for the specific date
+        temperature: 0 // maximize determinism
       }
     });
 
