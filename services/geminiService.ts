@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenAI, Type, Schema, Content } from "@google/genai";
 import { BadIdea } from "../types";
 
 const apiKey = process.env.API_KEY || '';
@@ -75,23 +75,16 @@ export const roastUserIdea = async (idea: string): Promise<string> => {
 };
 
 /**
- * Chat with the AI assistant.
+ * Sends a chat message and returns a stream of responses.
  */
-export const sendChatMessage = async (history: {role: string, parts: {text: string}[]}[], message: string) => {
-  try {
-    const chat = ai.chats.create({
-      model: REASONING_MODEL,
-      history: history,
-      config: {
-        thinkingConfig: { thinkingBudget: THINKING_BUDGET },
-        systemInstruction: "You are the cynic-in-residence at IdeasCower. You are knowledgeable but skeptical. You help users refine ideas by pointing out flaws, or you just chat about technology and business failures. You are the anti-thesis of a 'yes man'."
-      }
-    });
+export const sendChatMessage = async (history: Content[], message: string) => {
+  const chat = ai.chats.create({
+    model: REASONING_MODEL,
+    history: history,
+    config: {
+      thinkingConfig: { thinkingBudget: THINKING_BUDGET },
+    }
+  });
 
-    const result = await chat.sendMessageStream({ message });
-    return result;
-  } catch (error) {
-    console.error("Chat error:", error);
-    throw error;
-  }
+  return await chat.sendMessageStream({ message });
 };

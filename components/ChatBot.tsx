@@ -8,7 +8,7 @@ const ChatBot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'model', text: 'I am the IdeasCower Guardian. I doubt your business plan will work, but go ahead, ask me anything.' }
+    { role: 'model', text: 'I am The Liquidator. I doubt your business plan will work, but go ahead, ask me anything.' }
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -81,7 +81,7 @@ const ChatBot: React.FC = () => {
         <div className="fixed bottom-24 right-6 z-40 w-96 max-w-[calc(100vw-3rem)] h-[500px] bg-tower-dark border border-tower-gray shadow-2xl flex flex-col rounded-sm overflow-hidden animate-slide-up">
           {/* Header */}
           <div className="bg-black/50 p-4 border-b border-tower-gray flex justify-between items-center backdrop-blur-sm">
-            <h3 className="text-white font-mono text-sm uppercase tracking-wider">Guardian AI</h3>
+            <h3 className="text-white font-mono text-sm uppercase tracking-wider">The Liquidator</h3>
             <span className="text-[10px] text-tower-neon border border-tower-neon px-2 py-0.5 rounded-full">Gemini 3 Pro</span>
           </div>
 
