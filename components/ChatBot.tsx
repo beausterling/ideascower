@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { sendChatMessage } from '../services/geminiService';
+import { sendChatMessage } from '../services/supabaseService';
 import { ChatMessage } from '../types';
 import { ChatBubbleLeftRightIcon, XMarkIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
-import { GenerateContentResponse } from '@google/genai';
 
 const ChatBot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -45,9 +44,8 @@ const ChatBot: React.FC = () => {
       setMessages(prev => [...prev, { role: 'model', text: '', isThinking: true }]);
 
       for await (const chunk of streamResult) {
-         const c = chunk as GenerateContentResponse;
-         if (c.text) {
-             fullResponse += c.text;
+         if (chunk.text) {
+             fullResponse += chunk.text;
              setMessages(prev => {
                  const newMsgs = [...prev];
                  const lastMsg = newMsgs[newMsgs.length - 1];

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { roastUserIdea } from '../services/geminiService';
+import { roastUserIdea } from '../services/supabaseService';
 import { FireIcon } from '@heroicons/react/24/solid';
 import ReactMarkdown from 'react-markdown';
 

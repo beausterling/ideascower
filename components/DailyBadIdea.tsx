@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BadIdea } from '../types';
-import { getDailyBadIdea } from '../services/geminiService';
+import { getDailyBadIdea } from '../services/supabaseService';
 import { ExclamationTriangleIcon, ClockIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline';
 
 const STORAGE_KEY_PREFIX = 'ideascower_idea_';
