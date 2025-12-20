@@ -5,7 +5,7 @@ import IdeaRoaster from './components/IdeaRoaster';
 import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 // Using the raw GitHub URL based on the permalink provided
-const LOGO_URL = 'https://raw.githubusercontent.com/beausterling/ideascower/4c6e1e1e8cf5f4be09ace4a45deedd45ae7e83f0/lava-ball-final.png';
+const LOGO_URL = 'https://raw.githubusercontent.com/beausterling/ideascower/8763f31e91a4c1d4055de90724619d92268ff4ca/lava-ball-final.png';
 
 // CRITICAL: This date marks "Day 1" (Issue #1). 
 // Set this to the Midnight UTC of the actual launch day.
