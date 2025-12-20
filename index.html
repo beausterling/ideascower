@@ -73,18 +73,49 @@
                 '100%': { opacity: '1' },
               },
               textBurn: {
-                '0%': { color: '#e5e5e5', opacity: '1', filter: 'blur(0px)' },
-                '20%': { color: '#ffeb3b', textShadow: '0 0 5px #ff9800', filter: 'blur(0.5px)' }, 
-                '40%': { color: '#ff5722', opacity: '0.9', textShadow: '0 0 10px #f44336', filter: 'blur(1px)' },
-                '60%': { color: '#3e2723', opacity: '0.6', textShadow: 'none', filter: 'blur(2px)' },
-                '80%': { color: '#000000', opacity: '0.2', filter: 'blur(3px)' },
-                '100%': { color: 'transparent', opacity: '0', filter: 'blur(4px)' }
+                '0%': { 
+                  color: '#e5e5e5', 
+                  opacity: '1', 
+                  filter: 'blur(0px)',
+                  transform: 'translateY(0) scale(1)'
+                },
+                '20%': { 
+                  color: '#ffeb3b', 
+                  textShadow: '0 0 5px #ff9800', 
+                  filter: 'blur(0.5px)',
+                  transform: 'translateY(10px) scale(0.99)'
+                }, 
+                '40%': { 
+                  color: '#ff5722', 
+                  opacity: '0.9', 
+                  textShadow: '0 0 10px #f44336', 
+                  filter: 'blur(1px)',
+                  transform: 'translateY(30px) scale(0.98)' 
+                },
+                '60%': { 
+                  color: '#3e2723', 
+                  opacity: '0.6', 
+                  textShadow: 'none', 
+                  filter: 'blur(2px)',
+                  transform: 'translateY(80px) skewX(2deg)' 
+                },
+                '80%': { 
+                  color: '#000000', 
+                  opacity: '0.2', 
+                  filter: 'blur(3px)',
+                  transform: 'translateY(130px) skewX(-2deg)' 
+                },
+                '100%': { 
+                  color: 'transparent', 
+                  opacity: '0', 
+                  filter: 'blur(4px)',
+                  transform: 'translateY(180px) scale(0.8)' 
+                }
               },
               fireRise: {
                 '0%': { transform: 'translateY(120%) scale(1)', opacity: '0' },
-                '20%': { opacity: '0.8' },
-                '80%': { opacity: '0.6' },
-                '100%': { transform: 'translateY(-20%) scale(0.5)', opacity: '0' }
+                '10%': { opacity: '1' },
+                '100%': { transform: 'translateY(-20%) scale(0.1)', opacity: '0' }
               }
             }
           }
@@ -129,6 +160,6 @@
 </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>

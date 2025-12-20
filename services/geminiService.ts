@@ -27,6 +27,7 @@ export const getDailyBadIdea = async (targetDate?: Date): Promise<BadIdea> => {
 
   // Use the target date or default to now
   const dateObj = targetDate || new Date();
+  const dateStr = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
   
   // Calculate a deterministic seed based on the UTC Date (e.g. 20251024)
   // This ensures that asking for "Oct 24, 2025" always yields the same result.
@@ -35,7 +36,9 @@ export const getDailyBadIdea = async (targetDate?: Date): Promise<BadIdea> => {
   try {
     const response = await ai.models.generateContent({
       model: REASONING_MODEL,
-      contents: "Generate a startup idea that sounds revolutionary and profitable on the surface, but has a catastrophic logical, economic, or social flaw that makes it a terrible business. Do not make it obviously a joke; make it a 'trap' idea. Analyze the flaw deeply.",
+      // We inject the specific date into the prompt. This forces the model's context to be different 
+      // for every single day, ensuring unique ideas even if the seed math is similar.
+      contents: `Date: ${dateStr}. Generate a unique startup idea specifically for this date's entry in the archive. It must sound revolutionary and profitable on the surface, but have a catastrophic logical, economic, or social flaw that makes it a terrible business. Do not make it obviously a joke; make it a 'trap' idea. Analyze the flaw deeply.`,
       config: {
         thinkingConfig: { thinkingBudget: THINKING_BUDGET },
         responseMimeType: "application/json",
