@@ -9,10 +9,5 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    define: {
-      // Define process.env.API_KEY globally so the Gemini SDK can access it
-      // in the browser bundle.
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
-    },
   };
 });

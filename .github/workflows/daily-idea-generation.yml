@@ -1,0 +1,31 @@
+name: Generate Daily Idea
+
+on:
+  schedule:
+    # Run at 00:01 UTC every day (1 minute past midnight)
+    - cron: '1 0 * * *'
+  workflow_dispatch: # Allow manual triggering for testing
+
+jobs:
+  generate-idea:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate Daily Bad Idea
+        run: |
+          response=$(curl -X POST \
+            '${{ secrets.SUPABASE_URL }}/functions/v1/generate-daily-idea' \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -d '{"targetDate": "'$(date -u +%Y-%m-%d)'"}')
+
+          echo "Edge Function Response:"
+          echo "$response"
+
+          # Check for errors
+          if echo "$response" | grep -q "error"; then
+            echo "Error generating daily idea"
+            exit 1
+          fi
+
+          echo "Successfully generated daily idea for $(date -u +%Y-%m-%d)"

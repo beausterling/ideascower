@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BadIdea } from '../types';
-import { getDailyBadIdea } from '../services/geminiService';
+import { getDailyIdea } from '../services/supabaseService';
 import { ExclamationTriangleIcon, ClockIcon, ArchiveBoxIcon, FireIcon } from '@heroicons/react/24/outline';
 
 const STORAGE_KEY_PREFIX = 'ideascower_idea_';
@@ -41,6 +41,20 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
     return () => clearInterval(timer);
   }, [isToday]);
 
+  // Auto-refresh when countdown hits midnight
+  useEffect(() => {
+    if (timeLeft === "00:00:00" && isToday) {
+      // Clear localStorage cache for new day
+      const dateKey = new Date().toISOString().split('T')[0];
+      const storageKey = `${STORAGE_KEY_PREFIX}${dateKey}`;
+      localStorage.removeItem(storageKey);
+
+      // Trigger refetch by updating the idea state
+      // The parent component will handle updating targetDate
+      window.location.reload();
+    }
+  }, [timeLeft, isToday]);
+
   useEffect(() => {
     const fetchAndCacheIdea = async () => {
       setLoading(true);
@@ -64,9 +78,16 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
 
       // Fetch from API
       try {
-        const data = await getDailyBadIdea(targetDate);
-        localStorage.setItem(storageKey, JSON.stringify(data));
-        setIdea(data);
+        const data = await getDailyIdea(targetDate);
+        // Map snake_case response to camelCase for component
+        const idea: BadIdea = {
+          title: data.title,
+          pitch: data.pitch,
+          fatalFlaw: data.fatal_flaw,
+          verdict: data.verdict
+        };
+        localStorage.setItem(storageKey, JSON.stringify(idea));
+        setIdea(idea);
       } catch (error) {
         console.error("Failed to fetch daily idea", error instanceof Error ? error.message : String(error));
       } finally {
