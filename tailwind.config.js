@@ -28,6 +28,8 @@ export default {
         'fade-in': 'fadeIn 0.5s ease-out forwards',
         'text-burn': 'textBurn 2.5s ease-in-out forwards',
         'fire-rise': 'fireRise 1.5s ease-in infinite',
+        'smoke-rise': 'smokeRise 2s ease-out infinite',
+        'smoke-reveal': 'smokeReveal 0.6s ease-out forwards',
       },
       keyframes: {
         fadeInUp: {
@@ -82,6 +84,31 @@ export default {
           '0%': { transform: 'translateY(120%) scale(1)', opacity: '0' },
           '10%': { opacity: '1' },
           '100%': { transform: 'translateY(-20%) scale(0.1)', opacity: '0' }
+        },
+        smokeRise: {
+          '0%': {
+            transform: 'translateY(100%) scale(1)',
+            opacity: '0.7'
+          },
+          '50%': {
+            opacity: '0.4'
+          },
+          '100%': {
+            transform: 'translateY(-120%) scale(1.5)',
+            opacity: '0'
+          }
+        },
+        smokeReveal: {
+          '0%': {
+            opacity: '0',
+            filter: 'blur(8px)',
+            transform: 'translateY(20px)'
+          },
+          '100%': {
+            opacity: '1',
+            filter: 'blur(0px)',
+            transform: 'translateY(0)'
+          }
         }
       }
     }
