@@ -16,7 +16,6 @@ jobs:
           response=$(curl -X POST \
             '${{ secrets.SUPABASE_URL }}/functions/v1/generate-daily-idea' \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -d '{"targetDate": "'$(date -u +%Y-%m-%d)'"}')
 
           echo "Edge Function Response:"
