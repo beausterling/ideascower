@@ -65,11 +65,7 @@ const IdeaRoaster: React.FC = () => {
     setAnalysis('');
 
     try {
-      // Check authentication - sign in anonymously if not authenticated
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        await supabase.auth.signInAnonymously();
-      }
+      // User is guaranteed to be authenticated by ProtectedRoute wrapper
 
       // The text burns and falls. We clear it from the UI after the animation completes visually,
       // but we keep the state momentarily to allow the animation to play out on the existing text.

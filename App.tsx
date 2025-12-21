@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppSection } from './types';
 import DailyBadIdea from './components/DailyBadIdea';
 import IdeaRoaster from './components/IdeaRoaster';
+import ProtectedRoute from './components/ProtectedRoute';
 import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 // Using the raw GitHub URL based on the permalink provided
@@ -176,7 +177,9 @@ const App: React.FC = () => {
                 </div>
             ) : (
                 <div className="animate-fade-in-up">
-                    <IdeaRoaster />
+                    <ProtectedRoute feature="The Incinerator">
+                        <IdeaRoaster />
+                    </ProtectedRoute>
                 </div>
             )}
         </div>
