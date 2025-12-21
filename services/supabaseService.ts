@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL!;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY!;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -104,7 +104,7 @@ export const sendChatMessageStream = async (
   const session = await supabase.auth.getSession();
 
   const response = await fetch(
-    `${process.env.VITE_SUPABASE_URL}/functions/v1/chat-stream`,
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-stream`,
     {
       method: 'POST',
       headers: {
