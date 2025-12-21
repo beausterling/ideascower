@@ -22,7 +22,8 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
     const calculateTimeLeft = () => {
       const now = new Date();
       const nextMidnight = new Date(now);
-      nextMidnight.setUTCHours(24, 0, 0, 0);
+      nextMidnight.setUTCDate(nextMidnight.getUTCDate() + 1);
+      nextMidnight.setUTCHours(0, 0, 0, 0);
       const diff = nextMidnight.getTime() - now.getTime();
       
       if (diff <= 0) return "00:00:00";
@@ -44,14 +45,23 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
   // Auto-refresh when countdown hits midnight
   useEffect(() => {
     if (timeLeft === "00:00:00" && isToday) {
-      // Clear localStorage cache for new day
-      const dateKey = new Date().toISOString().split('T')[0];
-      const storageKey = `${STORAGE_KEY_PREFIX}${dateKey}`;
-      localStorage.removeItem(storageKey);
+      // Prevent multiple reloads on the same day
+      const lastReloadDate = localStorage.getItem('last_midnight_reload');
+      const currentDate = new Date().toISOString().split('T')[0];
 
-      // Trigger refetch by updating the idea state
-      // The parent component will handle updating targetDate
-      window.location.reload();
+      if (lastReloadDate !== currentDate) {
+        // Mark that we've reloaded for this date
+        localStorage.setItem('last_midnight_reload', currentDate);
+
+        // Clear localStorage cache for new day
+        const dateKey = new Date().toISOString().split('T')[0];
+        const storageKey = `${STORAGE_KEY_PREFIX}${dateKey}`;
+        localStorage.removeItem(storageKey);
+
+        // Trigger refetch by updating the idea state
+        // The parent component will handle updating targetDate
+        window.location.reload();
+      }
     }
   }, [timeLeft, isToday]);
 
