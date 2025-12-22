@@ -14,6 +14,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
   const { signIn, signUp } = useAuth();
 
   if (!isOpen) return null;
@@ -26,10 +27,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
     try {
       if (mode === 'signin') {
         await signIn(email, password);
+        onClose();
       } else {
         await signUp(email, password);
+        setSignupSuccess(true);
+        // Don't close modal yet - show confirmation message
+        return;
       }
-      onClose();
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
     } finally {
@@ -85,13 +89,36 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
             </div>
           )}
 
-          <button
+          {signupSuccess && (
+            <div className="bg-tower-neon/10 border border-tower-neon text-tower-neon px-4 py-3 text-sm">
+              <p className="font-mono mb-2">✓ Account created successfully!</p>
+              <p>Check your email to confirm your account, then return here to sign in.</p>
+            </div>
+          )}
+
+          {!signupSuccess ? (
+            <button
             type="submit"
             disabled={loading}
             className="w-full bg-tower-accent text-white py-3 font-mono uppercase tracking-wider hover:bg-white hover:text-black transition disabled:opacity-50"
           >
             {loading ? 'Processing...' : mode === 'signin' ? 'Sign In' : 'Sign Up'}
           </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setSignupSuccess(false);
+                setMode('signin');
+                setEmail('');
+                setPassword('');
+                setLoading(false);
+              }}
+              className="w-full bg-tower-neon text-black py-3 font-mono uppercase tracking-wider hover:bg-white transition"
+            >
+              Continue to Sign In
+            </button>
+          )}
         </form>
 
         <div className="mt-6 text-center">

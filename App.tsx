@@ -15,10 +15,24 @@ const LAUNCH_DATE = new Date('2025-12-13T00:00:00Z').getTime();
 const App: React.FC = () => {
   const [activeSection, setActiveSection] = useState<AppSection>(AppSection.DAILY_DOOM);
   const [imgError, setImgError] = useState(false);
-  
+  const [emailConfirmed, setEmailConfirmed] = useState(false);
+
   // State to track which date we are currently viewing
   const [viewingDate, setViewingDate] = useState<Date>(new Date());
   const [dateInfo, setDateInfo] = useState({ dateString: '', issueNumber: 1, isToday: true });
+
+  // Handle email confirmation callback
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get('type');
+
+    if (type === 'signup') {
+      // User clicked email confirmation link
+      window.history.replaceState(null, '', window.location.pathname);
+      setEmailConfirmed(true);
+      setActiveSection(AppSection.DAILY_DOOM);
+    }
+  }, []);
 
   useEffect(() => {
     // 1. Format the date string for display
@@ -130,9 +144,26 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-grow flex flex-col items-center py-12 md:py-20 relative w-full">
         {/* Background Grid visual */}
-        <div className="absolute inset-0 z-0 pointer-events-none opacity-20" 
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-20"
              style={{backgroundImage: 'radial-gradient(circle, #333 1px, transparent 1px)', backgroundSize: '30px 30px'}}>
         </div>
+
+        {/* Email confirmation success banner */}
+        {emailConfirmed && (
+          <div className="max-w-7xl mx-auto px-4 py-4 w-full z-20">
+            <div className="bg-tower-neon/10 border border-tower-neon text-tower-neon px-6 py-3 flex items-center justify-between">
+              <span className="font-mono text-sm">
+                ✓ Email confirmed! You can now sign in to access The Incinerator.
+              </span>
+              <button
+                onClick={() => setEmailConfirmed(false)}
+                className="text-tower-neon hover:text-white transition text-xl"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="z-10 w-full">
             {activeSection === AppSection.DAILY_DOOM ? (
