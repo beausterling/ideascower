@@ -75,6 +75,28 @@ export const roastUserIdea = async (idea: string): Promise<string> => {
 };
 
 /**
+ * Fetches all available idea dates from the database.
+ * Returns an array of date strings in YYYY-MM-DD format.
+ */
+export const getAvailableIdeaDates = async (): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('ideas')
+      .select('date')
+      .order('date', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return data?.map(row => row.date) || [];
+  } catch (error) {
+    console.error("Error fetching available dates:", error instanceof Error ? error.message : String(error));
+    return [];
+  }
+};
+
+/**
  * Sends a chat message and returns a stream of responses via Supabase edge function.
  */
 export const sendChatMessage = async (history: any[], message: string) => {
