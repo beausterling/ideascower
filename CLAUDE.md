@@ -114,8 +114,8 @@ Streaming chat endpoint for The Liquidator chatbot.
 
 ### Frontend (.env)
 ```
-VITE_SUPABASE_URL=https://ujtlptjowaillhhqnwrb.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_SUPABASE_URL=https://ncoasjfowlpnkfvpiibu.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_...
 ```
 
 ### Supabase Edge Functions (.env)

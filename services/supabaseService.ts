@@ -19,37 +19,34 @@ export interface DailyIdea {
 
 /**
  * Fetches a "Bad Idea of the Day" for a specific date.
- * Calls the Supabase edge function which retrieves from DB or generates on-demand.
+ * Queries the daily_ideas table directly from Supabase.
  */
 export const getDailyBadIdea = async (targetDate?: Date): Promise<BadIdea> => {
   try {
     const dateObj = targetDate || new Date();
     const dateString = dateObj.toISOString().split('T')[0];
 
-    // Construct URL with query parameter for GET request
-    const url = `${SUPABASE_URL}/functions/v1/get-idea?date=${dateString}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    // Query the daily_ideas table directly
+    const { data, error } = await supabase
+      .from('daily_ideas')
+      .select('*')
+      .eq('date', dateString)
+      .single();
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Edge function error (${response.status}):`, errorText);
-      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    if (error) {
+      console.error(`Database error:`, error);
+      throw new Error(`Database error: ${error.message}`);
     }
 
-    const result = await response.json();
+    if (!data) {
+      throw new Error(`No idea found for date: ${dateString}`);
+    }
 
     return {
-      title: result.title,
-      pitch: result.pitch,
-      fatalFlaw: result.fatalFlaw,
-      verdict: result.verdict,
+      title: data.title,
+      pitch: data.pitch,
+      fatalFlaw: data.fatal_flaw,
+      verdict: data.verdict,
     };
   } catch (error) {
     console.error("Error fetching daily idea:", error instanceof Error ? error.message : String(error));
@@ -89,7 +86,7 @@ export const roastUserIdea = async (idea: string): Promise<string> => {
 export const getAvailableIdeaDates = async (): Promise<string[]> => {
   try {
     const { data, error } = await supabase
-      .from('ideas')
+      .from('daily_ideas')
       .select('date')
       .order('date', { ascending: false });
 
@@ -109,7 +106,7 @@ export const getAvailableIdeaDates = async (): Promise<string[]> => {
  */
 export const sendChatMessage = async (history: any[], message: string) => {
   try {
-    const url = `${SUPABASE_URL}/functions/v1/chat`;
+    const url = `${SUPABASE_URL}/functions/v1/chat-stream`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -186,14 +183,14 @@ export const getIdeaArchive = async (
   try {
     // Get total count
     const { count, error: countError } = await supabase
-      .from('ideas')
+      .from('daily_ideas')
       .select('*', { count: 'exact', head: true });
 
     if (countError) throw countError;
 
     // Get paginated ideas
     const { data, error } = await supabase
-      .from('ideas')
+      .from('daily_ideas')
       .select('*')
       .order('date', { ascending: false })
       .range(offset, offset + limit - 1);
