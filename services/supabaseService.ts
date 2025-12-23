@@ -1,7 +1,21 @@
+export { supabase } from "../lib/supabaseClient";
 import { supabase } from "../lib/supabaseClient";
 import { BadIdea } from "../types";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+/**
+ * Interface for daily idea archive items
+ */
+export interface DailyIdea {
+  id: string;
+  issue_number: number;
+  date: string;
+  title: string;
+  pitch: string;
+  fatal_flaw: string;
+  verdict: string;
+}
 
 /**
  * Fetches a "Bad Idea of the Day" for a specific date.
@@ -164,5 +178,48 @@ export const sendChatMessage = async (history: any[], message: string) => {
   } catch (error) {
     console.error("Error in chat:", error instanceof Error ? error.message : String(error));
     throw error;
+  }
+};
+
+/**
+ * Fetches paginated archive of daily ideas from the database.
+ * Returns ideas sorted by date (newest first) with pagination support.
+ */
+export const getIdeaArchive = async (
+  limit: number,
+  offset: number
+): Promise<{ ideas: DailyIdea[]; total: number }> => {
+  try {
+    // Get total count
+    const { count, error: countError } = await supabase
+      .from('ideas')
+      .select('*', { count: 'exact', head: true });
+
+    if (countError) throw countError;
+
+    // Get paginated ideas
+    const { data, error } = await supabase
+      .from('ideas')
+      .select('*')
+      .order('date', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+
+    // Map database fields to DailyIdea interface
+    const ideas: DailyIdea[] = (data || []).map((row, index) => ({
+      id: row.id,
+      issue_number: offset + index + 1, // Calculate issue number based on position
+      date: row.date,
+      title: row.title,
+      pitch: row.pitch,
+      fatal_flaw: row.fatal_flaw,
+      verdict: row.verdict,
+    }));
+
+    return { ideas, total: count || 0 };
+  } catch (error) {
+    console.error('Error fetching idea archive:', error);
+    return { ideas: [], total: 0 };
   }
 };
