@@ -26,27 +26,21 @@ export const getDailyBadIdea = async (targetDate?: Date): Promise<BadIdea> => {
     const dateObj = targetDate || new Date();
     const dateString = dateObj.toISOString().split('T')[0];
 
-    const { data, error } = await supabase.functions.invoke('get-idea', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      // Pass date as query parameter
-      body: undefined,
-    });
-
     // Construct URL with query parameter for GET request
     const url = `${SUPABASE_URL}/functions/v1/get-idea?date=${dateString}`;
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
       },
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Edge function error (${response.status}):`, errorText);
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
     const result = await response.json();
