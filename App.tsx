@@ -3,6 +3,7 @@ import { AppSection } from './types';
 import DailyBadIdea from './components/DailyBadIdea';
 import IdeaRoaster from './components/IdeaRoaster';
 import CalendarModal from './components/CalendarModal';
+import ProtectedRoute from './components/ProtectedRoute';
 import { getAvailableIdeaDates } from './services/supabaseService';
 import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline';
 
@@ -227,7 +228,9 @@ const App: React.FC = () => {
                 </div>
             ) : (
                 <div className="animate-fade-in-up">
-                    <IdeaRoaster />
+                    <ProtectedRoute feature="The Incinerator">
+                        <IdeaRoaster />
+                    </ProtectedRoute>
                 </div>
             )}
         </div>
