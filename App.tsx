@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { AppSection } from './types';
 import DailyBadIdea from './components/DailyBadIdea';
 import IdeaRoaster from './components/IdeaRoaster';
-import ProtectedRoute from './components/ProtectedRoute';
-import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import CalendarModal from './components/CalendarModal';
+import { getAvailableIdeaDates } from './services/supabaseService';
+import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline';
 
 // Using the raw GitHub URL based on the permalink provided
-const LOGO_URL = 'https://raw.githubusercontent.com/beausterling/ideascower/8763f31e91a4c1d4055de90724619d92268ff4ca/lava-ball-final.png';
+const LOGO_URL = 'https://raw.githubusercontent.com/beausterling/ideascower/4c6e1e1e8cf5f4be09ace4a45deedd45ae7e83f0/lava-ball-final.png';
 
 // CRITICAL: This date marks "Day 1" (Issue #1). 
 // Set this to the Midnight UTC of the actual launch day.
@@ -15,38 +16,28 @@ const LAUNCH_DATE = new Date('2025-12-13T00:00:00Z').getTime();
 const App: React.FC = () => {
   const [activeSection, setActiveSection] = useState<AppSection>(AppSection.DAILY_DOOM);
   const [imgError, setImgError] = useState(false);
-  const [emailConfirmed, setEmailConfirmed] = useState(false);
-
+  
   // State to track which date we are currently viewing
   const [viewingDate, setViewingDate] = useState<Date>(new Date());
   const [dateInfo, setDateInfo] = useState({ dateString: '', issueNumber: 1, isToday: true });
 
-  // Handle email confirmation callback
-  useEffect(() => {
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const type = hashParams.get('type');
-
-    if (type === 'signup') {
-      // User clicked email confirmation link
-      window.history.replaceState(null, '', window.location.pathname);
-      setEmailConfirmed(true);
-      setActiveSection(AppSection.DAILY_DOOM);
-    }
-  }, []);
+  // Calendar modal state
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
 
   useEffect(() => {
     // 1. Format the date string for display
-    const formattedDate = viewingDate.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
+    const formattedDate = viewingDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
       day: 'numeric'
     });
 
     // 2. Calculate Issue Number based on 24-hour periods since launch (UTC aligned)
     const msPerDay = 24 * 60 * 60 * 1000;
     const diff = viewingDate.getTime() - LAUNCH_DATE;
-    
-    // Ensure Issue #1 is the minimum. 
+
+    // Ensure Issue #1 is the minimum.
     const issueNum = Math.max(1, Math.floor(diff / msPerDay) + 1);
 
     // 3. Check if we are viewing "Today"
@@ -60,18 +51,35 @@ const App: React.FC = () => {
     });
   }, [viewingDate]);
 
+  // Fetch available dates on mount
+  useEffect(() => {
+    const fetchDates = async () => {
+      const dates = await getAvailableIdeaDates();
+      setAvailableDates(dates);
+    };
+    fetchDates();
+  }, []);
+
   const navigateDate = (direction: 'prev' | 'next') => {
     const newDate = new Date(viewingDate);
     if (direction === 'prev') {
       newDate.setDate(newDate.getDate() - 1);
       // Don't allow going before launch date (optional, but good for cleanliness)
-      if (newDate.getTime() < LAUNCH_DATE) return; 
+      if (newDate.getTime() < LAUNCH_DATE) return;
     } else {
       newDate.setDate(newDate.getDate() + 1);
       // Don't allow going into the future
       if (newDate > new Date()) return;
     }
     setViewingDate(newDate);
+  };
+
+  const goToToday = () => {
+    setViewingDate(new Date());
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setViewingDate(date);
   };
 
   return (
@@ -144,26 +152,9 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-grow flex flex-col items-center py-12 md:py-20 relative w-full">
         {/* Background Grid visual */}
-        <div className="absolute inset-0 z-0 pointer-events-none opacity-20"
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-20" 
              style={{backgroundImage: 'radial-gradient(circle, #333 1px, transparent 1px)', backgroundSize: '30px 30px'}}>
         </div>
-
-        {/* Email confirmation success banner */}
-        {emailConfirmed && (
-          <div className="max-w-7xl mx-auto px-4 py-4 w-full z-20">
-            <div className="bg-tower-neon/10 border border-tower-neon text-tower-neon px-6 py-3 flex items-center justify-between">
-              <span className="font-mono text-sm">
-                ✓ Email confirmed! You can now sign in to access The Incinerator.
-              </span>
-              <button
-                onClick={() => setEmailConfirmed(false)}
-                className="text-tower-neon hover:text-white transition text-xl"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
 
         <div className="z-10 w-full">
             {activeSection === AppSection.DAILY_DOOM ? (
@@ -188,9 +179,37 @@ const App: React.FC = () => {
                                     <CalendarDaysIcon className="w-5 h-5" />
                                     <span className="font-serif text-lg tracking-wide">{dateInfo.dateString}</span>
                                 </div>
-                                <h2 className="text-gray-500 font-mono text-xs uppercase tracking-[0.3em]">
-                                    ISSUE #{dateInfo.issueNumber}
-                                </h2>
+
+                                {/* Issue Number with History and Current buttons */}
+                                <div className="flex items-center gap-2 sm:gap-4">
+                                    {/* History Button */}
+                                    <button
+                                        onClick={() => setIsCalendarOpen(true)}
+                                        className="group flex items-center gap-1.5 px-2 sm:px-3 py-1 text-xs font-mono uppercase tracking-wider
+                                                   text-gray-600 hover:text-tower-accent border border-gray-800 hover:border-tower-accent
+                                                   transition-all duration-200"
+                                    >
+                                        <ArchiveBoxIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                                        <span className="hidden sm:inline">History</span>
+                                    </button>
+
+                                    {/* Issue Number */}
+                                    <h2 className="text-gray-500 font-mono text-xs uppercase tracking-[0.3em]">
+                                        ISSUE #{dateInfo.issueNumber}
+                                    </h2>
+
+                                    {/* Current Button */}
+                                    <button
+                                        onClick={goToToday}
+                                        disabled={dateInfo.isToday}
+                                        className="group flex items-center gap-1.5 px-2 sm:px-3 py-1 text-xs font-mono uppercase tracking-wider
+                                                   text-gray-600 hover:text-tower-accent border border-gray-800 hover:border-tower-accent
+                                                   transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-600 disabled:hover:border-gray-800"
+                                    >
+                                        <ClockIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                                        <span className="hidden sm:inline">Current</span>
+                                    </button>
+                                </div>
                             </div>
 
                             <button 
@@ -208,9 +227,7 @@ const App: React.FC = () => {
                 </div>
             ) : (
                 <div className="animate-fade-in-up">
-                    <ProtectedRoute feature="The Incinerator">
-                        <IdeaRoaster />
-                    </ProtectedRoute>
+                    <IdeaRoaster />
                 </div>
             )}
         </div>
@@ -225,6 +242,16 @@ const App: React.FC = () => {
           </p>
         </div>
       </footer>
+
+      {/* Calendar Modal */}
+      <CalendarModal
+        isOpen={isCalendarOpen}
+        onClose={() => setIsCalendarOpen(false)}
+        onSelectDate={handleDateSelect}
+        availableDates={availableDates}
+        currentDate={viewingDate}
+        launchDate={new Date(LAUNCH_DATE)}
+      />
     </div>
   );
 };

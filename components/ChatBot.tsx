@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { sendChatMessageStream, supabase } from '../services/supabaseService';
+import { sendChatMessage } from '../services/supabaseService';
 import { ChatMessage } from '../types';
 import { ChatBubbleLeftRightIcon, XMarkIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
 
@@ -10,7 +10,6 @@ const ChatBot: React.FC = () => {
     { role: 'model', text: 'I am The Liquidator. I doubt your business plan will work, but go ahead, ask me anything.' }
   ]);
   const [isTyping, setIsTyping] = useState(false);
-  const [sessionId] = useState<string>(() => crypto.randomUUID());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -31,58 +30,30 @@ const ChatBot: React.FC = () => {
     setIsTyping(true);
 
     try {
-      // Check authentication - sign in anonymously if not authenticated
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        await supabase.auth.signInAnonymously();
-      }
-
       // Convert internal ChatMessage to History format for API
       const history = messages.map(m => ({
         role: m.role,
         parts: [{ text: m.text }]
       }));
 
-      const response = await sendChatMessageStream(history, userMsg, sessionId);
-
+      const streamResult = await sendChatMessage(history, userMsg);
+      
       let fullResponse = "";
-
+      
       // Add placeholder for streaming response
       setMessages(prev => [...prev, { role: 'model', text: '', isThinking: true }]);
 
-      // Parse SSE stream
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      while (reader) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') break;
-
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.text) {
-                fullResponse += parsed.text;
-                setMessages(prev => {
-                  const newMsgs = [...prev];
-                  const lastMsg = newMsgs[newMsgs.length - 1];
-                  lastMsg.text = fullResponse;
-                  lastMsg.isThinking = false;
-                  return newMsgs;
-                });
-              }
-            } catch (e) {
-              // Skip malformed JSON
-            }
-          }
-        }
+      for await (const chunk of streamResult) {
+         if (chunk.text) {
+             fullResponse += chunk.text;
+             setMessages(prev => {
+                 const newMsgs = [...prev];
+                 const lastMsg = newMsgs[newMsgs.length - 1];
+                 lastMsg.text = fullResponse;
+                 lastMsg.isThinking = false;
+                 return newMsgs;
+             });
+         }
       }
     } catch (error) {
       console.error("Chat Error:", error instanceof Error ? error.message : String(error));

@@ -1,87 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { BadIdea } from '../types';
-import { getDailyIdea } from '../services/supabaseService';
-import { ExclamationTriangleIcon, ClockIcon, ArchiveBoxIcon, FireIcon } from '@heroicons/react/24/outline';
+import { getDailyBadIdea } from '../services/supabaseService';
+import { ExclamationTriangleIcon, ClockIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline';
 
 const STORAGE_KEY_PREFIX = 'ideascower_idea_';
-
-const SmokeReveal: React.FC = () => {
-  // Generate smoke particles with randomized properties
-  const smokeParticles = Array.from({ length: 40 }).map((_, i) => ({
-    id: i,
-    left: `${Math.random() * 100}%`,
-    width: `${60 + Math.random() * 140}px`,
-    height: `${80 + Math.random() * 120}px`,
-    animationDelay: `${Math.random() * 0.8}s`,
-    animationDuration: `${1.5 + Math.random() * 1}s`,
-    opacity: Math.random() * 0.3 + 0.2,
-  }));
-
-  return (
-    <div className="absolute inset-0 z-10 overflow-hidden pointer-events-none">
-      {/* Dark smoke particles rising */}
-      {smokeParticles.map(p => (
-        <div
-          key={p.id}
-          className="absolute bottom-0 rounded-full blur-xl animate-smoke-rise"
-          style={{
-            left: p.left,
-            width: p.width,
-            height: p.height,
-            animationDelay: p.animationDelay,
-            animationDuration: p.animationDuration,
-            opacity: p.opacity,
-            background: 'radial-gradient(circle, rgba(5,5,5,0.8) 0%, rgba(10,10,10,0.6) 50%, transparent 100%)',
-          }}
-        />
-      ))}
-
-      {/* Additional mist overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-tower-black/40 via-tower-dark/20 to-transparent animate-smoke-rise"
-           style={{ animationDuration: '2.5s' }} />
-    </div>
-  );
-};
-
-const CardSkeleton: React.FC = () => {
-  return (
-    <div className="w-full max-w-4xl mx-auto p-6 opacity-20">
-      <div className="border border-tower-gray bg-tower-dark relative overflow-hidden shadow-2xl blur-sm">
-        <div className="p-8 md:p-12">
-          {/* Header skeleton */}
-          <div className="flex justify-between items-center mb-8">
-            <div className="h-6 w-32 bg-tower-gray rounded"></div>
-            <div className="h-6 w-40 bg-tower-gray rounded"></div>
-          </div>
-
-          {/* Title skeleton */}
-          <div className="h-12 bg-tower-gray rounded mb-8 w-3/4"></div>
-
-          {/* Content skeletons */}
-          <div className="grid md:grid-cols-2 gap-12">
-            <div className="space-y-4">
-              <div className="h-4 bg-tower-gray rounded w-1/4 mb-4"></div>
-              <div className="h-4 bg-tower-gray rounded"></div>
-              <div className="h-4 bg-tower-gray rounded"></div>
-              <div className="h-4 bg-tower-gray rounded w-5/6"></div>
-            </div>
-            <div className="space-y-4">
-              <div className="h-4 bg-tower-gray rounded w-1/3 mb-4"></div>
-              <div className="h-4 bg-tower-gray rounded"></div>
-              <div className="h-4 bg-tower-gray rounded"></div>
-              <div className="h-4 bg-tower-gray rounded w-4/5"></div>
-            </div>
-          </div>
-
-          {/* Verdict skeleton */}
-          <div className="mt-12 pt-8 border-t border-tower-gray text-center">
-            <div className="h-6 bg-tower-gray rounded w-2/3 mx-auto"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 interface DailyBadIdeaProps {
   targetDate: Date;
@@ -91,7 +13,7 @@ interface DailyBadIdeaProps {
 const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
   const [idea, setIdea] = useState<BadIdea | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [timeLeft, setTimeLeft] = useState<string>('00:00:00');
+  const [timeLeft, setTimeLeft] = useState<string>('');
 
   // Countdown timer logic for Midnight UTC (Only runs if isToday)
   useEffect(() => {
@@ -100,8 +22,7 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
     const calculateTimeLeft = () => {
       const now = new Date();
       const nextMidnight = new Date(now);
-      nextMidnight.setUTCDate(nextMidnight.getUTCDate() + 1);
-      nextMidnight.setUTCHours(0, 0, 0, 0);
+      nextMidnight.setUTCHours(24, 0, 0, 0);
       const diff = nextMidnight.getTime() - now.getTime();
       
       if (diff <= 0) return "00:00:00";
@@ -119,29 +40,6 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
 
     return () => clearInterval(timer);
   }, [isToday]);
-
-  // Auto-refresh when countdown hits midnight
-  useEffect(() => {
-    if (timeLeft === "00:00:00" && isToday) {
-      // Prevent multiple reloads on the same day
-      const lastReloadDate = localStorage.getItem('last_midnight_reload');
-      const currentDate = new Date().toISOString().split('T')[0];
-
-      if (lastReloadDate !== currentDate) {
-        // Mark that we've reloaded for this date
-        localStorage.setItem('last_midnight_reload', currentDate);
-
-        // Clear localStorage cache for new day
-        const dateKey = new Date().toISOString().split('T')[0];
-        const storageKey = `${STORAGE_KEY_PREFIX}${dateKey}`;
-        localStorage.removeItem(storageKey);
-
-        // Trigger refetch by updating the idea state
-        // The parent component will handle updating targetDate
-        window.location.reload();
-      }
-    }
-  }, [timeLeft, isToday]);
 
   useEffect(() => {
     const fetchAndCacheIdea = async () => {
@@ -166,16 +64,9 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
 
       // Fetch from API
       try {
-        const data = await getDailyIdea(targetDate);
-        // Map snake_case response to camelCase for component
-        const idea: BadIdea = {
-          title: data.title,
-          pitch: data.pitch,
-          fatalFlaw: data.fatal_flaw,
-          verdict: data.verdict
-        };
-        localStorage.setItem(storageKey, JSON.stringify(idea));
-        setIdea(idea);
+        const data = await getDailyBadIdea(targetDate);
+        localStorage.setItem(storageKey, JSON.stringify(data));
+        setIdea(data);
       } catch (error) {
         console.error("Failed to fetch daily idea", error instanceof Error ? error.message : String(error));
       } finally {
@@ -188,19 +79,11 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
 
   if (loading) {
     return (
-      <div className="relative min-h-[600px]">
-        {/* Card skeleton underneath */}
-        <CardSkeleton />
-
-        {/* Smoke overlay */}
-        <SmokeReveal />
-
-        {/* Loading text on top */}
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
-          <p className="font-mono text-lg tracking-widest text-tower-accent animate-pulse text-center px-4">
-            {isToday ? 'CALCULATING FAILURE VECTORS...' : 'RETRIEVING ARCHIVAL DATA...'}
-          </p>
-        </div>
+      <div className="w-full max-w-4xl mx-auto p-6 flex flex-col items-center justify-center min-h-[400px]">
+        <div className="w-16 h-16 border-4 border-t-transparent border-tower-accent rounded-full animate-spin mb-6"></div>
+        <p className="font-mono text-lg tracking-widest text-tower-accent animate-pulse text-center">
+           {isToday ? 'CALCULATING FAILURE VECTORS...' : 'RETRIEVING ARCHIVAL DATA...'}
+        </p>
       </div>
     );
   }
@@ -209,52 +92,56 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
 
   return (
     <div className="w-full max-w-4xl mx-auto p-6">
-      <div className="border border-tower-gray bg-tower-dark relative overflow-hidden group shadow-2xl transition-all duration-500">
+      <div className={`border relative overflow-hidden group shadow-2xl transition-colors duration-500
+          ${isToday ? 'border-tower-gray bg-tower-dark' : 'border-gray-800 bg-[#080808]'}
+      `}>
         
-        {/* Decorative corner - Always visible now, creating a consistent vibe */}
-        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl pointer-events-none bg-tower-accent/20"></div>
+        {/* Decorative corner - Feathered edges */}
+        <div className={`absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl pointer-events-none
+            ${isToday ? 'bg-tower-accent/20' : 'bg-gray-700/10'}
+        `}></div>
         
-        {/* Subtle grid texture overlay for that premium feel */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
-
         <div className="p-8 md:p-12 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             
-            {/* Status Badge */}
+            {/* Status Badge - Removed flashing bg, nice subtle border now */}
             {isToday ? (
-                <span className="inline-block px-3 py-1 text-xs font-mono font-bold text-tower-accent bg-tower-accent/5 border border-tower-accent/20 uppercase tracking-wider shadow-[0_0_10px_rgba(255,62,62,0.1)]">
+                <span className="inline-block px-3 py-1 text-xs font-mono font-bold text-tower-accent bg-tower-accent/5 border border-tower-accent/20 uppercase tracking-wider">
                   Today's Disaster
                 </span>
             ) : (
-                <span className="inline-block px-3 py-1 text-xs font-mono font-bold text-tower-neon bg-tower-neon/5 border border-tower-neon/20 uppercase tracking-wider flex items-center gap-2 shadow-[0_0_10px_rgba(0,255,65,0.1)]">
+                <span className="inline-block px-3 py-1 text-xs font-mono font-bold text-gray-400 bg-gray-900 border border-gray-700 uppercase tracking-wider flex items-center gap-2">
                   <ArchiveBoxIcon className="w-3 h-3" />
                   Archived Record
                 </span>
             )}
 
             {/* Timer or Date Stamp */}
-            <div className={`flex items-center gap-2 text-xs font-mono uppercase tracking-widest px-3 py-1 rounded border border-tower-gray bg-tower-black/50 text-gray-400`}>
+            <div className={`flex items-center gap-2 text-xs font-mono uppercase tracking-widest px-3 py-1 rounded border
+                ${isToday ? 'text-gray-500 bg-tower-black/50 border-tower-gray' : 'text-gray-600 border-gray-800 bg-transparent'}
+            `}>
               {isToday ? (
                   <>
                     <ClockIcon className="w-4 h-4 text-tower-neon" />
                     Next Idea in <span className="text-white tabular-nums">{timeLeft}</span>
                   </>
               ) : (
-                  <>
-                    <FireIcon className="w-4 h-4 text-tower-accent-dim" />
-                    <span>Failed on {targetDate.toLocaleDateString()}</span>
-                  </>
+                  <span className="text-gray-500">Record #{targetDate.toISOString().split('T')[0].replace(/-/g,'')}</span>
               )}
             </div>
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-serif font-bold mb-8 tracking-tight text-white drop-shadow-sm">
+          <h1 className={`text-4xl md:text-6xl font-serif font-bold mb-8 tracking-tight
+             ${isToday ? 'text-white' : 'text-gray-300'}
+          `}>
             {idea.title}
           </h1>
 
           <div className="grid md:grid-cols-2 gap-12">
             <div className="space-y-4">
-              <h3 className="font-mono text-sm uppercase border-b border-tower-gray pb-2 mb-4 text-tower-neon">
+              <h3 className={`font-mono text-sm uppercase border-b pb-2 mb-4
+                  ${isToday ? 'text-tower-neon border-tower-gray' : 'text-gray-500 border-gray-800'}
+              `}>
                 The Pitch
               </h3>
               <p className="text-gray-300 text-lg leading-relaxed font-light">
@@ -263,19 +150,27 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
             </div>
 
             <div className="space-y-4 relative">
-               <div className="absolute -left-6 top-0 bottom-0 w-px hidden md:block bg-tower-gray"></div>
-              <h3 className="font-mono text-sm uppercase border-b border-tower-gray pb-2 mb-4 flex items-center gap-2 text-tower-accent">
+               <div className={`absolute -left-6 top-0 bottom-0 w-px hidden md:block
+                   ${isToday ? 'bg-tower-gray' : 'bg-gray-800'}
+               `}></div>
+              <h3 className={`font-mono text-sm uppercase border-b pb-2 mb-4 flex items-center gap-2
+                   ${isToday ? 'text-tower-accent border-tower-gray' : 'text-gray-500 border-gray-800'}
+              `}>
                 <ExclamationTriangleIcon className="w-4 h-4" />
                 The Fatal Flaw
               </h3>
-              <p className="text-gray-300 text-base leading-relaxed">
+              <p className="text-gray-400 text-base leading-relaxed">
                 {idea.fatalFlaw}
               </p>
             </div>
           </div>
 
-          <div className="mt-12 pt-8 border-t border-tower-gray text-center">
-            <p className="font-mono italic text-xl text-tower-accent">
+          <div className={`mt-12 pt-8 border-t text-center
+              ${isToday ? 'border-tower-gray' : 'border-gray-800'}
+          `}>
+            <p className={`font-mono italic text-xl
+                ${isToday ? 'text-tower-accent' : 'text-gray-500'}
+            `}>
               "{idea.verdict}"
             </p>
           </div>

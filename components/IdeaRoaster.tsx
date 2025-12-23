@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { roastIdea, supabase } from '../services/supabaseService';
+import { roastUserIdea } from '../services/supabaseService';
 import { FireIcon } from '@heroicons/react/24/solid';
 import ReactMarkdown from 'react-markdown';
 
@@ -63,22 +63,14 @@ const IdeaRoaster: React.FC = () => {
 
     setLoading(true);
     setAnalysis('');
-
-    try {
-      // User is guaranteed to be authenticated by ProtectedRoute wrapper
-
-      // The text burns and falls. We clear it from the UI after the animation completes visually,
-      // but we keep the state momentarily to allow the animation to play out on the existing text.
-
-      const result = await roastIdea(input);
-      setAnalysis(result);
-      setInput(''); // Clear the input as it has been "incinerated"
-    } catch (error) {
-      console.error("Failed to roast idea", error instanceof Error ? error.message : String(error));
-      setAnalysis("My roasting circuits are overheated. Try again later.");
-    } finally {
-      setLoading(false);
-    }
+    
+    // The text burns and falls. We clear it from the UI after the animation completes visually,
+    // but we keep the state momentarily to allow the animation to play out on the existing text.
+    
+    const result = await roastUserIdea(input);
+    setAnalysis(result);
+    setLoading(false);
+    setInput(''); // Clear the input as it has been "incinerated"
   };
 
   return (

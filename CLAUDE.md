@@ -1,74 +1,180 @@
-# CLAUDE.md
+# IdeaScower - Project Documentation
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Overview
+IdeaScower is a web application that generates and analyzes startup ideas using Google's Gemini AI. The app features three main components:
 
-## Project Overview
-
-IdeasCower is a satirical web application that generates intentionally bad startup ideas and roasts user-submitted ideas. It uses Google's Gemini API (specifically the "gemini-3-pro-preview" model with extended thinking capabilities) to provide witty, analytical critiques of startup concepts.
-
-## Development Commands
-
-```bash
-# Start development server (runs on port 3000)
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-## Environment Setup
-
-The app requires a Gemini API key. Create a `.env` file in the project root:
-
-```
-GEMINI_API_KEY=your_api_key_here
-```
-
-The Vite config (vite.config.ts:14-15) exposes this as both `process.env.API_KEY` and `process.env.GEMINI_API_KEY`.
+1. **Daily Bad Idea** - A deterministically generated "bad startup idea" that updates daily at midnight UTC
+2. **The Incinerator** - An AI-powered roasting tool that analyzes and critiques user-submitted ideas
+3. **The Liquidator** - An AI chatbot consultant with a cynical personality
 
 ## Architecture
 
-### Application Structure
+### Frontend
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: TailwindCSS
+- **UI Components**: Heroicons
+- **Markdown**: react-markdown
 
-- **App.tsx**: Root component with two-tab navigation (Daily Doom / The Incinerator)
-- **components/DailyBadIdea.tsx**: Displays AI-generated bad startup ideas
-- **components/IdeaRoaster.tsx**: User input form for idea roasting
-- **components/ChatBot.tsx**: Floating chat interface called "The Liquidator"
-- **services/geminiService.ts**: All Gemini API interactions
-- **types.ts**: TypeScript interfaces for BadIdea, RoastResult, ChatMessage, AppSection
+### Backend
+- **Database**: Supabase (PostgreSQL)
+- **API**: Supabase Edge Functions (Deno)
+- **AI Model**: Google Gemini 3 Pro Preview (`gemini-3-pro-preview`)
+- **Cron**: Supabase scheduled functions
 
-### Key Technical Details
+## AI Configuration
 
-**Gemini Integration**:
-- Model: `gemini-3-pro-preview` (services/geminiService.ts:8)
-- Thinking budget: 32,768 tokens for extended reasoning (services/geminiService.ts:9)
-- Three main functions:
-  - `getDailyBadIdea()`: Uses structured output (JSON schema) to generate formatted bad ideas
-  - `roastUserIdea()`: Free-form text critique of user ideas
-  - `sendChatMessage()`: Streaming chat responses for the ChatBot
+### Model Settings
+- **Model**: `gemini-3-pro-preview`
+- **Thinking Budget**: 32768 tokens
+- **Temperature**: 0 (for daily ideas - deterministic)
 
-**Styling**:
-- Uses Tailwind CSS with custom color palette defined via CSS variables
-- Custom colors: `tower-black`, `tower-dark`, `tower-gray`, `tower-accent` (orange), `tower-neon` (green)
-- No tailwind.config.js file; relies on default Tailwind + inline styles
+### System Prompts
 
-**Assets**:
-- Logo: lava-ball-final.png (spinning lava/rock sphere) loaded via GitHub raw URL permalink
-- Fallback SVG graphic if image fails to load (App.tsx:38-55)
+#### Daily Bad Idea Generator
+```
+Generate a startup idea that sounds revolutionary and profitable on the surface, but has a catastrophic logical, economic, or social flaw that makes it a terrible business. Do not make it obviously a joke; make it a 'trap' idea. Analyze the flaw deeply.
+```
 
-### Important Patterns
+#### Idea Roaster (The Incinerator)
+```
+You are a ruthless venture capitalist who specializes in spotting failure.
+Your goal is to deconstruct why this startup idea will fail. Look for market size issues, unit economics, technical impossibility, or competition.
+Be harsh, witty, and deeply analytical.
+```
 
-1. **Error Handling**: All Gemini API calls have try/catch blocks with fallback responses
-2. **Streaming**: ChatBot component uses `sendMessageStream()` and accumulates chunks in real-time
-3. **State Management**: Pure React useState, no external state libraries
-4. **Path Alias**: `@/` is aliased to project root (vite.config.ts:19, tsconfig.json:22-24)
+#### ChatBot (The Liquidator)
+```
+You are 'The Liquidator', a cynical AI business consultant who assumes every user idea is doomed to fail. Your tone is dry, sarcastic, and technically precise.
+```
 
-## Brand Voice
+## Database Schema
 
-The application's personality is sardonic and analytical. When generating content or prompts:
-- Use terms like "Daily Doom", "The Incinerator", "The Liquidator"
-- Emphasize failure analysis and "trap ideas" that sound good but are fundamentally flawed
-- Maintain a dark/industrial aesthetic (tower metaphor, fire/destruction imagery)
+### `ideas` table
+Stores all generated daily ideas with their metadata.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| date | date | The UTC date this idea represents (unique) |
+| seed | integer | Deterministic seed (YYYYMMDD format) |
+| title | text | Startup name |
+| pitch | text | The elevator pitch |
+| fatal_flaw | text | Analysis of why it will fail |
+| verdict | text | One-sentence summary |
+| created_at | timestamptz | When this record was created |
+
+## API Endpoints (Edge Functions)
+
+### 1. `generate-daily-idea`
+Generates and stores a new daily idea. Called by cron at midnight UTC.
+
+**Method**: POST
+**Auth**: Service role key (internal only)
+**Body**:
+```json
+{
+  "date": "2025-12-18" // optional, defaults to today
+}
+```
+
+### 2. `get-idea`
+Retrieves an idea for a specific date. If not in DB, generates on-demand.
+
+**Method**: GET
+**Auth**: Public (anon key)
+**Query**: `?date=2025-12-18`
+
+### 3. `roast-idea`
+Analyzes and roasts a user-submitted idea.
+
+**Method**: POST
+**Auth**: Public (anon key)
+**Body**:
+```json
+{
+  "idea": "Uber for walking dogs but the dogs walk you"
+}
+```
+
+### 4. `chat`
+Streaming chat endpoint for The Liquidator chatbot.
+
+**Method**: POST
+**Auth**: Public (anon key)
+**Body**:
+```json
+{
+  "history": [...],
+  "message": "Will my startup work?"
+}
+```
+
+## Environment Variables
+
+### Frontend (.env)
+```
+VITE_SUPABASE_URL=https://ujtlptjowaillhhqnwrb.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### Supabase Edge Functions (.env)
+```
+GEMINI_API_KEY=your_google_ai_api_key_here
+```
+
+## Development Setup
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Set up environment variables in `.env`
+
+3. Run development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Deploy edge functions:
+   ```bash
+   supabase functions deploy generate-daily-idea
+   supabase functions deploy get-idea
+   supabase functions deploy roast-idea
+   supabase functions deploy chat
+   ```
+
+## Migration from Google AI Studio
+
+This project was originally built using direct Google AI Studio API calls from the frontend. The migration to Supabase provides:
+
+1. **Security**: API keys are now stored server-side in edge functions
+2. **Performance**: Daily ideas are pre-generated and cached in the database
+3. **History**: All ideas are permanently stored and queryable
+4. **Scalability**: Edge functions handle rate limiting and resource management
+
+## Cron Schedule
+
+- **Daily Idea Generation**: Runs at `0 0 * * *` (midnight UTC)
+- Automatically generates and stores the idea for the new day
+
+## Deployment
+
+### Frontend
+Deploy to Vercel, Netlify, or any static hosting service.
+
+### Backend
+Supabase handles all backend infrastructure including:
+- PostgreSQL database
+- Edge Functions (Deno runtime)
+- Scheduled functions (cron)
+- Authentication (if needed in future)
+
+## Future Enhancements
+
+- User accounts and saved ideas
+- Upvoting/downvoting ideas
+- Social sharing features
+- Analytics dashboard
+- API rate limiting per user

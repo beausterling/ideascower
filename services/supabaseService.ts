@@ -1,172 +1,168 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from "../lib/supabaseClient";
+import { BadIdea } from "../types";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+/**
+ * Fetches a "Bad Idea of the Day" for a specific date.
+ * Calls the Supabase edge function which retrieves from DB or generates on-demand.
+ */
+export const getDailyBadIdea = async (targetDate?: Date): Promise<BadIdea> => {
+  try {
+    const dateObj = targetDate || new Date();
+    const dateString = dateObj.toISOString().split('T')[0];
 
-// Types
-export interface DailyIdea {
-  id: string;
-  date: string;
-  issue_number: number;
-  title: string;
-  pitch: string;
-  fatal_flaw: string;
-  verdict: string;
-  created_at: string;
-}
-
-export interface Roast {
-  id: string;
-  user_id: string;
-  idea_text: string;
-  roast_result: string;
-  created_at: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  user_id: string;
-  role: 'user' | 'model';
-  message_text: string;
-  session_id?: string;
-  created_at: string;
-}
-
-// Daily Ideas
-export const getDailyIdea = async (targetDate: Date): Promise<DailyIdea> => {
-  const dateStr = targetDate.toISOString().split('T')[0];
-
-  // Call Edge Function to get or generate idea
-  const { data, error } = await supabase.functions.invoke('generate-daily-idea', {
-    body: { targetDate: dateStr },
-  });
-
-  if (error) throw error;
-  return data as DailyIdea;
-};
-
-export const getIdeaArchive = async (limit = 30, offset = 0) => {
-  const { data, error, count } = await supabase
-    .from('daily_ideas')
-    .select('*', { count: 'exact' })
-    .order('date', { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (error) throw error;
-  return { ideas: data as DailyIdea[], total: count || 0 };
-};
-
-// Roasts (requires auth)
-export const roastIdea = async (idea: string): Promise<string> => {
-  // Call Edge Function to roast idea
-  const { data, error } = await supabase.functions.invoke('roast-idea', {
-    body: { idea },
-  });
-
-  if (error) throw error;
-  return data.roast;
-};
-
-export const getUserRoasts = async () => {
-  const { data, error } = await supabase
-    .from('roasts')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data as Roast[];
-};
-
-// Chat (requires auth)
-export const getChatHistory = async (sessionId?: string) => {
-  let query = supabase
-    .from('chat_messages')
-    .select('*')
-    .order('created_at', { ascending: true });
-
-  if (sessionId) {
-    query = query.eq('session_id', sessionId);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return data as ChatMessage[];
-};
-
-// Chat streaming via Edge Function
-export const sendChatMessageStream = async (
-  history: any[],
-  message: string,
-  sessionId: string
-) => {
-  const session = await supabase.auth.getSession();
-
-  const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-stream`,
-    {
-      method: 'POST',
+    const { data, error } = await supabase.functions.invoke('get-idea', {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.data.session?.access_token}`,
       },
-      body: JSON.stringify({ message, history, sessionId }),
-    }
-  );
-
-  return response;
-};
-
-export const saveChatMessage = async (
-  role: 'user' | 'model',
-  messageText: string,
-  sessionId?: string
-) => {
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error('User must be authenticated to save chat messages');
-  }
-
-  const { error } = await supabase
-    .from('chat_messages')
-    .insert({
-      user_id: user.id,
-      role,
-      message_text: messageText,
-      session_id: sessionId || null,
+      // Pass date as query parameter
+      body: undefined,
     });
 
-  if (error) throw error;
+    // Construct URL with query parameter for GET request
+    const url = `${SUPABASE_URL}/functions/v1/get-idea?date=${dateString}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    return {
+      title: result.title,
+      pitch: result.pitch,
+      fatalFlaw: result.fatalFlaw,
+      verdict: result.verdict,
+    };
+  } catch (error) {
+    console.error("Error fetching daily idea:", error instanceof Error ? error.message : String(error));
+    return {
+      title: "Error 404: Idea Not Found",
+      pitch: "A service that promises to find ideas but fails due to API errors.",
+      fatalFlaw: "Reliability is key.",
+      verdict: "Try refreshing."
+    };
+  }
 };
 
-// Auth helpers
-export const signUp = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-  if (error) throw error;
-  return data;
+/**
+ * Roasts a user's idea via Supabase edge function.
+ */
+export const roastUserIdea = async (idea: string): Promise<string> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('roast-idea', {
+      body: { idea },
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return data.roast || "The idea was so bad I was left speechless.";
+  } catch (error) {
+    console.error("Error roasting idea:", error instanceof Error ? error.message : String(error));
+    return "My roasting circuits are overheated. Try again later.";
+  }
 };
 
-export const signIn = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  if (error) throw error;
-  return data;
+/**
+ * Fetches all available idea dates from the database.
+ * Returns an array of date strings in YYYY-MM-DD format.
+ */
+export const getAvailableIdeaDates = async (): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('ideas')
+      .select('date')
+      .order('date', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return data?.map(row => row.date) || [];
+  } catch (error) {
+    console.error("Error fetching available dates:", error instanceof Error ? error.message : String(error));
+    return [];
+  }
 };
 
-export const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
-};
+/**
+ * Sends a chat message and returns a stream of responses via Supabase edge function.
+ */
+export const sendChatMessage = async (history: any[], message: string) => {
+  try {
+    const url = `${SUPABASE_URL}/functions/v1/chat`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ history, message }),
+    });
 
-export const getCurrentUser = async () => {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error) throw error;
-  return user;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    // Return an async generator that reads from the SSE stream
+    return {
+      [Symbol.asyncIterator]: async function* () {
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (!reader) {
+          throw new Error('No response body');
+        }
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+
+                if (data === '[DONE]') {
+                  return;
+                }
+
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.text) {
+                    yield { text: parsed.text };
+                  } else if (parsed.error) {
+                    throw new Error(parsed.error);
+                  }
+                } catch (e) {
+                  // Skip invalid JSON
+                  continue;
+                }
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      }
+    };
+  } catch (error) {
+    console.error("Error in chat:", error instanceof Error ? error.message : String(error));
+    throw error;
+  }
 };
