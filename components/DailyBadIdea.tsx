@@ -5,6 +5,84 @@ import { ExclamationTriangleIcon, ClockIcon, ArchiveBoxIcon } from '@heroicons/r
 
 const STORAGE_KEY_PREFIX = 'ideascower_idea_';
 
+const SmokeReveal: React.FC = () => {
+  // Generate smoke particles with randomized properties
+  const smokeParticles = Array.from({ length: 40 }).map((_, i) => ({
+    id: i,
+    left: `${Math.random() * 100}%`,
+    width: `${60 + Math.random() * 140}px`,
+    height: `${80 + Math.random() * 120}px`,
+    animationDelay: `${Math.random() * 0.8}s`,
+    animationDuration: `${1.5 + Math.random() * 1}s`,
+    opacity: Math.random() * 0.3 + 0.2,
+  }));
+
+  return (
+    <div className="absolute inset-0 z-10 overflow-hidden pointer-events-none">
+      {/* Dark smoke particles rising */}
+      {smokeParticles.map(p => (
+        <div
+          key={p.id}
+          className="absolute bottom-0 rounded-full blur-xl animate-smoke-rise"
+          style={{
+            left: p.left,
+            width: p.width,
+            height: p.height,
+            animationDelay: p.animationDelay,
+            animationDuration: p.animationDuration,
+            opacity: p.opacity,
+            background: 'radial-gradient(circle, rgba(5,5,5,0.8) 0%, rgba(10,10,10,0.6) 50%, transparent 100%)',
+          }}
+        />
+      ))}
+
+      {/* Additional mist overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-tower-black/40 via-tower-dark/20 to-transparent animate-smoke-rise"
+           style={{ animationDuration: '2.5s' }} />
+    </div>
+  );
+};
+
+const CardSkeleton: React.FC = () => {
+  return (
+    <div className="w-full max-w-4xl mx-auto p-6 opacity-20">
+      <div className="border border-tower-gray bg-tower-dark relative overflow-hidden shadow-2xl blur-sm">
+        <div className="p-8 md:p-12">
+          {/* Header skeleton */}
+          <div className="flex justify-between items-center mb-8">
+            <div className="h-6 w-32 bg-tower-gray rounded"></div>
+            <div className="h-6 w-40 bg-tower-gray rounded"></div>
+          </div>
+
+          {/* Title skeleton */}
+          <div className="h-12 bg-tower-gray rounded mb-8 w-3/4"></div>
+
+          {/* Content skeletons */}
+          <div className="grid md:grid-cols-2 gap-12">
+            <div className="space-y-4">
+              <div className="h-4 bg-tower-gray rounded w-1/4 mb-4"></div>
+              <div className="h-4 bg-tower-gray rounded"></div>
+              <div className="h-4 bg-tower-gray rounded"></div>
+              <div className="h-4 bg-tower-gray rounded w-5/6"></div>
+            </div>
+            <div className="space-y-4">
+              <div className="h-4 bg-tower-gray rounded w-1/3 mb-4"></div>
+              <div className="h-4 bg-tower-gray rounded"></div>
+              <div className="h-4 bg-tower-gray rounded"></div>
+              <div className="h-4 bg-tower-gray rounded w-4/5"></div>
+            </div>
+          </div>
+
+          {/* Verdict skeleton */}
+          <div className="mt-12 pt-8 border-t border-tower-gray text-center">
+            <div className="h-6 bg-tower-gray rounded w-2/3 mx-auto"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface DailyBadIdeaProps {
   targetDate: Date;
   isToday: boolean;
@@ -79,11 +157,19 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
 
   if (loading) {
     return (
-      <div className="w-full max-w-4xl mx-auto p-6 flex flex-col items-center justify-center min-h-[400px]">
-        <div className="w-16 h-16 border-4 border-t-transparent border-tower-accent rounded-full animate-spin mb-6"></div>
-        <p className="font-mono text-lg tracking-widest text-tower-accent animate-pulse text-center">
-           {isToday ? 'CALCULATING FAILURE VECTORS...' : 'RETRIEVING ARCHIVAL DATA...'}
-        </p>
+      <div className="relative min-h-[600px]">
+        {/* Card skeleton underneath */}
+        <CardSkeleton />
+
+        {/* Smoke overlay */}
+        <SmokeReveal />
+
+        {/* Loading text on top */}
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
+          <p className="font-mono text-lg tracking-widest text-tower-accent animate-pulse text-center px-4">
+            {isToday ? 'CALCULATING FAILURE VECTORS...' : 'RETRIEVING ARCHIVAL DATA...'}
+          </p>
+        </div>
       </div>
     );
   }
