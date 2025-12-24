@@ -4,8 +4,9 @@ import DailyBadIdea from './components/DailyBadIdea';
 import IdeaRoaster from './components/IdeaRoaster';
 import CalendarModal from './components/CalendarModal';
 import ProtectedRoute from './components/ProtectedRoute';
+import Profile from './components/Profile';
 import { getAvailableIdeaDates } from './services/supabaseService';
-import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline';
+import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, ArchiveBoxIcon, UserIcon } from '@heroicons/react/24/outline';
 
 // Using the raw GitHub URL based on the permalink provided
 const LOGO_URL = 'https://raw.githubusercontent.com/beausterling/ideascower/4c6e1e1e8cf5f4be09ace4a45deedd45ae7e83f0/lava-ball-final.png';
@@ -138,12 +139,23 @@ const App: React.FC = () => {
               <button
                 onClick={() => setActiveSection(AppSection.ROAST_LAB)}
                 className={`font-mono text-sm uppercase tracking-widest py-2 px-3 sm:px-0 sm:py-1 border-b-2 transition-all flex items-center justify-center
-                  ${activeSection === AppSection.ROAST_LAB 
-                    ? 'border-tower-neon text-white' 
+                  ${activeSection === AppSection.ROAST_LAB
+                    ? 'border-tower-neon text-white'
                     : 'border-transparent text-gray-500 hover:text-gray-300'}`}
               >
                 <span className="hidden sm:inline">The Incinerator</span>
                 <FireIcon className="w-6 h-6 sm:hidden" />
+              </button>
+
+              <button
+                onClick={() => setActiveSection(AppSection.PROFILE)}
+                className={`font-mono text-sm uppercase tracking-widest py-2 px-3 sm:px-0 sm:py-1 border-b-2 transition-all flex items-center justify-center
+                  ${activeSection === AppSection.PROFILE
+                    ? 'border-tower-accent text-white'
+                    : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+              >
+                <span className="hidden sm:inline">Profile</span>
+                <UserIcon className="w-6 h-6 sm:hidden" />
               </button>
             </div>
           </div>
@@ -226,10 +238,16 @@ const App: React.FC = () => {
                     {/* Content */}
                     <DailyBadIdea targetDate={viewingDate} isToday={dateInfo.isToday} />
                 </div>
-            ) : (
+            ) : activeSection === AppSection.ROAST_LAB ? (
                 <div className="animate-fade-in-up">
                     <ProtectedRoute feature="The Incinerator">
                         <IdeaRoaster />
+                    </ProtectedRoute>
+                </div>
+            ) : (
+                <div className="animate-fade-in-up">
+                    <ProtectedRoute feature="Profile">
+                        <Profile />
                     </ProtectedRoute>
                 </div>
             )}

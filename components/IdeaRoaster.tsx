@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { roastUserIdea } from '../services/supabaseService';
-import { FireIcon } from '@heroicons/react/24/solid';
+import { useAuth } from '../contexts/AuthContext';
+import { FireIcon, BookmarkIcon, GlobeAltIcon, LockClosedIcon, CheckIcon } from '@heroicons/react/24/solid';
 import ReactMarkdown from 'react-markdown';
 
 const FirePit: React.FC = () => {
@@ -19,7 +20,7 @@ const FirePit: React.FC = () => {
     <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-0 animate-fade-in" style={{ animationDelay: '1.0s' }}>
       {/* Glow Base - Deep red underglow */}
       <div className="absolute bottom-0 left-0 right-0 h-full bg-gradient-to-t from-red-600/40 via-orange-900/10 to-transparent mix-blend-screen"></div>
-      
+
       {/* Particles - Sharper with mix-blend-plus-lighter for that 'blown out' fire look */}
       {particles.map(p => (
         <div
@@ -39,10 +40,17 @@ const FirePit: React.FC = () => {
 };
 
 const IdeaRoaster: React.FC = () => {
+  const { user } = useAuth();
   const [input, setInput] = useState('');
+  const [lastIdea, setLastIdea] = useState(''); // Store the idea that was roasted
   const [analysis, setAnalysis] = useState('');
   const [loading, setLoading] = useState(false);
   const [showFire, setShowFire] = useState(false);
+
+  // Save state
+  const [isSaved, setIsSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [makePublic, setMakePublic] = useState(false);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -61,32 +69,48 @@ const IdeaRoaster: React.FC = () => {
     e.preventDefault();
     if (!input.trim()) return;
 
+    const ideaToRoast = input.trim();
     setLoading(true);
     setAnalysis('');
-    
+    setIsSaved(false);
+    setMakePublic(false);
+
     // The text burns and falls. We clear it from the UI after the animation completes visually,
     // but we keep the state momentarily to allow the animation to play out on the existing text.
-    
-    const result = await roastUserIdea(input);
-    setAnalysis(result);
+
+    const result = await roastUserIdea(ideaToRoast);
+    setAnalysis(result.roast);
+    setLastIdea(ideaToRoast);
     setLoading(false);
     setInput(''); // Clear the input as it has been "incinerated"
   };
 
+  const handleSave = async () => {
+    if (!user || !lastIdea || !analysis || isSaved) return;
+
+    setSaving(true);
+    const result = await roastUserIdea(lastIdea, { save: true, isPublic: makePublic });
+    setSaving(false);
+
+    if (result.savedId) {
+      setIsSaved(true);
+    }
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto p-6">
-      
+
       {/* Main Container Card */}
       <div className="relative border border-gray-800 bg-[#080808] overflow-hidden shadow-2xl transition-all duration-500">
-        
+
         {/* The "Red Gradient Thing" - Ambient Glow */}
         <div className="absolute -top-[150px] -left-[150px] w-[600px] h-[600px] rounded-full blur-[120px] pointer-events-none bg-tower-accent/10"></div>
-        
+
         {/* Secondary Glow (Bottom Right) */}
         <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-orange-900/10 rounded-full blur-[100px] pointer-events-none"></div>
 
         <div className="relative z-10 p-8 md:p-12">
-            
+
             <div className="text-center mb-10">
                 <h2 className="text-4xl font-serif text-white mb-3 tracking-tight">The Incinerator</h2>
                 <p className="text-gray-400 font-mono text-sm max-w-lg mx-auto leading-relaxed">
@@ -96,7 +120,7 @@ const IdeaRoaster: React.FC = () => {
 
             <form onSubmit={handleSubmit} className="mb-8 relative group">
                 <div className="relative overflow-hidden rounded-sm bg-black/40 border border-gray-800 focus-within:border-tower-accent focus-within:ring-1 focus-within:ring-tower-accent transition-all">
-                    
+
                     {/* Fire Effect Container (Behind Text) */}
                     {showFire && <FirePit />}
 
@@ -110,7 +134,7 @@ const IdeaRoaster: React.FC = () => {
                         ${loading ? 'animate-text-burn' : 'text-gray-200'}
                     `}
                     />
-                    
+
                     {/* Action Bar inside/below textarea */}
                     <div className="absolute bottom-4 right-4 flex items-center gap-3 z-30">
                         <span className={`text-xs font-mono text-tower-accent transition-opacity duration-300 ${loading ? 'opacity-100' : 'opacity-0'}`}>
@@ -120,8 +144,8 @@ const IdeaRoaster: React.FC = () => {
                             type="submit"
                             disabled={loading || !input}
                             className={`flex items-center gap-2 px-6 py-2 font-mono text-sm uppercase tracking-wider transition-all border
-                            ${loading 
-                                ? 'bg-transparent border-transparent text-transparent cursor-not-allowed opacity-0' 
+                            ${loading
+                                ? 'bg-transparent border-transparent text-transparent cursor-not-allowed opacity-0'
                                 : 'bg-white border-white text-black hover:bg-tower-accent hover:border-tower-accent hover:text-white shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_20px_rgba(255,62,62,0.4)] opacity-100'}
                             `}
                         >
@@ -140,7 +164,7 @@ const IdeaRoaster: React.FC = () => {
                         Verdict
                     </h3>
                     <div className="prose prose-invert prose-lg max-w-none font-light text-gray-300">
-                        <ReactMarkdown 
+                        <ReactMarkdown
                             components={{
                                 strong: ({node, ...props}) => <span className="text-tower-accent font-normal" {...props} />,
                                 p: ({node, ...props}) => <p className="mb-4 leading-relaxed" {...props} />
@@ -149,6 +173,62 @@ const IdeaRoaster: React.FC = () => {
                             {analysis}
                         </ReactMarkdown>
                     </div>
+
+                    {/* Save to History Option */}
+                    {user && !isSaved && (
+                      <div className="mt-8 pt-6 border-t border-gray-800">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                          {/* Public/Private Toggle */}
+                          <button
+                            type="button"
+                            onClick={() => setMakePublic(!makePublic)}
+                            className={`flex items-center gap-2 px-4 py-2 text-xs font-mono uppercase tracking-wider border transition-colors ${
+                              makePublic
+                                ? 'border-tower-neon/50 text-tower-neon bg-tower-neon/10'
+                                : 'border-gray-700 text-gray-500 hover:text-gray-300 hover:border-gray-500'
+                            }`}
+                          >
+                            {makePublic ? (
+                              <>
+                                <GlobeAltIcon className="w-4 h-4" />
+                                Public
+                              </>
+                            ) : (
+                              <>
+                                <LockClosedIcon className="w-4 h-4" />
+                                Private
+                              </>
+                            )}
+                          </button>
+
+                          {/* Save Button */}
+                          <button
+                            type="button"
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="flex items-center gap-2 px-6 py-2 font-mono text-sm uppercase tracking-wider transition-all border border-tower-neon text-tower-neon hover:bg-tower-neon hover:text-black disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <BookmarkIcon className="w-4 h-4" />
+                            {saving ? 'Saving...' : 'Save to History'}
+                          </button>
+                        </div>
+                        <p className="mt-3 text-gray-600 font-mono text-xs">
+                          {makePublic
+                            ? 'This roast will be visible to others.'
+                            : 'Only you will be able to see this roast.'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Saved Confirmation */}
+                    {isSaved && (
+                      <div className="mt-8 pt-6 border-t border-gray-800">
+                        <div className="flex items-center gap-2 text-tower-neon font-mono text-sm">
+                          <CheckIcon className="w-5 h-5" />
+                          Saved to your profile!
+                        </div>
+                      </div>
+                    )}
                 </div>
             )}
         </div>
