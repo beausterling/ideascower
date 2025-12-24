@@ -97,9 +97,7 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
       `}>
         
         {/* Decorative corner - Feathered edges */}
-        <div className={`absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl pointer-events-none
-            ${isToday ? 'bg-tower-accent/20' : 'bg-gray-700/10'}
-        `}></div>
+        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl pointer-events-none bg-tower-accent/20"></div>
         
         <div className="p-8 md:p-12 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -131,17 +129,13 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
             </div>
           </div>
 
-          <h1 className={`text-4xl md:text-6xl font-serif font-bold mb-8 tracking-tight
-             ${isToday ? 'text-white' : 'text-gray-300'}
-          `}>
+          <h1 className="text-4xl md:text-6xl font-serif font-bold mb-8 tracking-tight text-white">
             {idea.title}
           </h1>
 
           <div className="grid md:grid-cols-2 gap-12">
             <div className="space-y-4">
-              <h3 className={`font-mono text-sm uppercase border-b pb-2 mb-4
-                  ${isToday ? 'text-tower-neon border-tower-gray' : 'text-gray-500 border-gray-800'}
-              `}>
+              <h3 className="font-mono text-sm uppercase border-b pb-2 mb-4 text-tower-neon border-tower-gray">
                 The Pitch
               </h3>
               <p className="text-gray-300 text-lg leading-relaxed font-light">
@@ -153,9 +147,7 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
                <div className={`absolute -left-6 top-0 bottom-0 w-px hidden md:block
                    ${isToday ? 'bg-tower-gray' : 'bg-gray-800'}
                `}></div>
-              <h3 className={`font-mono text-sm uppercase border-b pb-2 mb-4 flex items-center gap-2
-                   ${isToday ? 'text-tower-accent border-tower-gray' : 'text-gray-500 border-gray-800'}
-              `}>
+              <h3 className="font-mono text-sm uppercase border-b pb-2 mb-4 flex items-center gap-2 text-tower-accent border-tower-gray">
                 <ExclamationTriangleIcon className="w-4 h-4" />
                 The Fatal Flaw
               </h3>
@@ -168,9 +160,7 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
           <div className={`mt-12 pt-8 border-t text-center
               ${isToday ? 'border-tower-gray' : 'border-gray-800'}
           `}>
-            <p className={`font-mono italic text-xl
-                ${isToday ? 'text-tower-accent' : 'text-gray-500'}
-            `}>
+            <p className="font-mono italic text-xl text-tower-accent">
               "{idea.verdict}"
             </p>
           </div>
