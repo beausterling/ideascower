@@ -5,6 +5,7 @@ import IdeaRoaster from './components/IdeaRoaster';
 import CalendarModal from './components/CalendarModal';
 import ProtectedRoute from './components/ProtectedRoute';
 import Profile from './components/Profile';
+import { useAuth } from './contexts/AuthContext';
 import { getAvailableIdeaDates, getCurrentIssueNumber } from './services/supabaseService';
 import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, ArchiveBoxIcon, Bars3Icon, XMarkIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 
@@ -14,15 +15,9 @@ const LOGO_URL = 'https://raw.githubusercontent.com/beausterling/ideascower/4c6e
 const PENDING_REDIRECT_KEY = 'ideascower_pending_redirect';
 
 const App: React.FC = () => {
-  const [activeSection, setActiveSection] = useState<AppSection>(() => {
-    // Check if there's a pending redirect (e.g., after OAuth)
-    const pendingRedirect = localStorage.getItem(PENDING_REDIRECT_KEY);
-    if (pendingRedirect) {
-      localStorage.removeItem(PENDING_REDIRECT_KEY);
-      return pendingRedirect as AppSection;
-    }
-    return AppSection.DAILY_DOOM;
-  });
+  const { user, loading: authLoading } = useAuth();
+  const [activeSection, setActiveSection] = useState<AppSection>(AppSection.DAILY_DOOM);
+  const [hasCheckedRedirect, setHasCheckedRedirect] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -35,6 +30,18 @@ const App: React.FC = () => {
   // Calendar modal state
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
+
+  // Check for pending redirect AFTER auth loading completes
+  useEffect(() => {
+    if (!authLoading && !hasCheckedRedirect) {
+      const pendingRedirect = localStorage.getItem(PENDING_REDIRECT_KEY);
+      if (pendingRedirect && user) {
+        localStorage.removeItem(PENDING_REDIRECT_KEY);
+        setActiveSection(pendingRedirect as AppSection);
+      }
+      setHasCheckedRedirect(true);
+    }
+  }, [authLoading, user, hasCheckedRedirect]);
 
   // Fetch current issue number on mount
   useEffect(() => {

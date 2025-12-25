@@ -61,19 +61,22 @@ const IdeaRoaster: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [makePublic, setMakePublic] = useState(false);
 
-  // Load pending idea from localStorage on mount or when user logs in
+  // Load pending idea from localStorage on mount
   useEffect(() => {
     const pendingIdea = localStorage.getItem(PENDING_IDEA_KEY);
-    if (pendingIdea && user) {
-      // User just signed in and has a pending idea - restore it
+    if (pendingIdea) {
       setInput(pendingIdea);
+      // Only show auth prompt if user is not logged in
+      if (!user) {
+        setShowAuthPrompt(true);
+      }
+    }
+  }, []); // Run once on mount
+
+  // Hide auth prompt when user logs in (but keep the idea in localStorage until roasted)
+  useEffect(() => {
+    if (user) {
       setShowAuthPrompt(false);
-      // Clear from localStorage after restoring
-      localStorage.removeItem(PENDING_IDEA_KEY);
-    } else if (pendingIdea && !user) {
-      // User hasn't signed in yet but has a pending idea
-      setInput(pendingIdea);
-      setShowAuthPrompt(true);
     }
   }, [user]);
 
@@ -108,14 +111,14 @@ const IdeaRoaster: React.FC = () => {
     setMakePublic(false);
     setShowAuthPrompt(false);
 
-    // Clear any pending idea from localStorage since we're roasting now
-    localStorage.removeItem(PENDING_IDEA_KEY);
-
     const result = await roastUserIdea(ideaToRoast);
     setAnalysis(result.roast);
     setLastIdea(ideaToRoast);
     setLoading(false);
     setInput(''); // Clear the input as it has been "incinerated"
+
+    // Clear pending idea from localStorage AFTER successful roast
+    localStorage.removeItem(PENDING_IDEA_KEY);
   };
 
   const handleSave = async () => {
