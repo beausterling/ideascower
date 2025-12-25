@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { roastUserIdea } from '../services/supabaseService';
+import React, { useState, useEffect, useCallback } from 'react';
+import { roastUserIdea, checkRoastUsage, saveRoast, RoastError, RoastUsageInfo } from '../services/supabaseService';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
 import { AppSection } from '../types';
-import { FireIcon, BookmarkIcon, GlobeAltIcon, LockClosedIcon, CheckIcon } from '@heroicons/react/24/solid';
+import { FireIcon, BookmarkIcon, GlobeAltIcon, LockClosedIcon, CheckIcon, ClockIcon } from '@heroicons/react/24/solid';
 import ReactMarkdown from 'react-markdown';
 
 const PENDING_IDEA_KEY = 'ideascower_pending_idea';
@@ -44,6 +44,23 @@ const FirePit: React.FC = () => {
   );
 };
 
+// Helper to format time remaining
+const formatTimeRemaining = (resetAt: string): string => {
+  const now = new Date();
+  const reset = new Date(resetAt);
+  const diff = reset.getTime() - now.getTime();
+
+  if (diff <= 0) return 'now';
+
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m`;
+};
+
 const IdeaRoaster: React.FC = () => {
   const { user } = useAuth();
   const [input, setInput] = useState('');
@@ -61,6 +78,26 @@ const IdeaRoaster: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [makePublic, setMakePublic] = useState(false);
 
+  // Rate limiting state
+  const [usageInfo, setUsageInfo] = useState<RoastUsageInfo | null>(null);
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<string | null>(null);
+
+  // Fetch usage info when user logs in
+  const fetchUsageInfo = useCallback(async () => {
+    if (!user) {
+      setUsageInfo(null);
+      return;
+    }
+    try {
+      const info = await checkRoastUsage();
+      setUsageInfo(info);
+      setRateLimitError(null);
+    } catch (err) {
+      console.error('Error fetching usage info:', err);
+    }
+  }, [user]);
+
   // Load pending idea from localStorage on mount
   useEffect(() => {
     const pendingIdea = localStorage.getItem(PENDING_IDEA_KEY);
@@ -73,12 +110,38 @@ const IdeaRoaster: React.FC = () => {
     }
   }, []); // Run once on mount
 
-  // Hide auth prompt when user logs in (but keep the idea in localStorage until roasted)
+  // Hide auth prompt when user logs in and fetch usage info
   useEffect(() => {
     if (user) {
       setShowAuthPrompt(false);
+      fetchUsageInfo();
+    } else {
+      setUsageInfo(null);
     }
-  }, [user]);
+  }, [user, fetchUsageInfo]);
+
+  // Update countdown timer every minute
+  useEffect(() => {
+    if (!usageInfo?.resetAt || usageInfo.remaining > 0) {
+      setTimeRemaining(null);
+      return;
+    }
+
+    const updateTimer = () => {
+      const formatted = formatTimeRemaining(usageInfo.resetAt!);
+      setTimeRemaining(formatted);
+
+      // If time has passed, refresh usage info
+      if (formatted === 'now') {
+        fetchUsageInfo();
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [usageInfo, fetchUsageInfo]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -104,32 +167,74 @@ const IdeaRoaster: React.FC = () => {
       return;
     }
 
+    // Check if rate limited before even trying
+    if (usageInfo && usageInfo.remaining <= 0) {
+      setRateLimitError('You\'ve used all 3 roasts for today. Come back later!');
+      return;
+    }
+
     const ideaToRoast = input.trim();
     setLoading(true);
     setAnalysis('');
     setIsSaved(false);
     setMakePublic(false);
     setShowAuthPrompt(false);
+    setRateLimitError(null);
 
-    const result = await roastUserIdea(ideaToRoast);
-    setAnalysis(result.roast);
-    setLastIdea(ideaToRoast);
-    setLoading(false);
-    setInput(''); // Clear the input as it has been "incinerated"
+    try {
+      const result = await roastUserIdea(ideaToRoast);
+      setAnalysis(result.roast);
+      setLastIdea(ideaToRoast);
 
-    // Clear pending idea from localStorage AFTER successful roast
-    localStorage.removeItem(PENDING_IDEA_KEY);
+      // Update usage info from response
+      setUsageInfo(prev => ({
+        ...prev,
+        remaining: result.remaining,
+        resetAt: result.resetAt,
+        limit: prev?.limit ?? 3,
+      }));
+
+      // Clear pending idea from localStorage AFTER successful roast
+      localStorage.removeItem(PENDING_IDEA_KEY);
+      setInput(''); // Clear the input as it has been "incinerated"
+    } catch (err) {
+      if (err instanceof RoastError) {
+        if (err.code === 'RATE_LIMITED') {
+          setRateLimitError('You\'ve used all 3 roasts for today. Come back later!');
+          setUsageInfo({
+            remaining: 0,
+            resetAt: err.resetAt ?? null,
+            limit: 3,
+          });
+        } else if (err.code === 'AUTH_REQUIRED' || err.code === 'AUTH_INVALID') {
+          // Session may have expired
+          setShowAuthPrompt(true);
+        } else {
+          setAnalysis('My roasting circuits are overheated. Try again later.');
+        }
+      } else {
+        setAnalysis('My roasting circuits are overheated. Try again later.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSave = async () => {
     if (!user || !lastIdea || !analysis || isSaved) return;
 
     setSaving(true);
-    const result = await roastUserIdea(lastIdea, { save: true, isPublic: makePublic });
-    setSaving(false);
+    try {
+      // Use the dedicated save endpoint - doesn't count against rate limit
+      const result = await saveRoast(lastIdea, analysis, makePublic);
 
-    if (result.savedId) {
-      setIsSaved(true);
+      if (result?.savedId) {
+        setIsSaved(true);
+      }
+    } catch (err) {
+      console.error('Error saving roast:', err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -157,7 +262,41 @@ const IdeaRoaster: React.FC = () => {
                 <p className="text-gray-400 font-mono text-xs sm:text-sm max-w-lg mx-auto leading-relaxed">
                     Submit your "billion dollar idea". We'll tell you why it's worth zero.
                 </p>
+
+                {/* Usage indicator for authenticated users */}
+                {user && usageInfo && (
+                  <div className="mt-4 flex items-center justify-center gap-2">
+                    {usageInfo.remaining > 0 ? (
+                      <span className="text-gray-500 font-mono text-xs flex items-center gap-1.5">
+                        <FireIcon className="w-3.5 h-3.5 text-tower-accent" />
+                        {usageInfo.remaining} of 3 roasts remaining today
+                      </span>
+                    ) : (
+                      <span className="text-orange-400 font-mono text-xs flex items-center gap-1.5">
+                        <ClockIcon className="w-3.5 h-3.5" />
+                        Next roast available in {timeRemaining || 'calculating...'}
+                      </span>
+                    )}
+                  </div>
+                )}
             </div>
+
+            {/* Rate limit warning */}
+            {rateLimitError && (
+              <div className="mb-6 p-4 border border-orange-500/50 bg-orange-500/10 rounded-sm">
+                <div className="flex items-center gap-3">
+                  <ClockIcon className="w-6 h-6 text-orange-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-orange-300 font-mono text-sm">{rateLimitError}</p>
+                    {usageInfo?.resetAt && (
+                      <p className="text-orange-400/70 font-mono text-xs mt-1">
+                        Next roast available in {timeRemaining || formatTimeRemaining(usageInfo.resetAt)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="mb-6 sm:mb-8 relative group">
                 <div className="relative overflow-hidden rounded-sm bg-black/40 border border-gray-800 focus-within:border-tower-accent focus-within:ring-1 focus-within:ring-tower-accent transition-all">
@@ -189,14 +328,16 @@ const IdeaRoaster: React.FC = () => {
                         </span>
                         <button
                             type="submit"
-                            disabled={loading || !input}
+                            disabled={loading || !input || (!!user && usageInfo?.remaining === 0)}
                             className={`flex items-center gap-2 px-4 sm:px-6 py-2 font-mono text-xs sm:text-sm uppercase tracking-wider transition-all border
                             ${loading
                                 ? 'bg-transparent border-transparent text-transparent cursor-not-allowed opacity-0'
-                                : 'bg-white border-white text-black hover:bg-tower-accent hover:border-tower-accent hover:text-white shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_20px_rgba(255,62,62,0.4)] opacity-100'}
+                                : (!!user && usageInfo?.remaining === 0)
+                                  ? 'bg-gray-700 border-gray-700 text-gray-500 cursor-not-allowed opacity-50'
+                                  : 'bg-white border-white text-black hover:bg-tower-accent hover:border-tower-accent hover:text-white shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_20px_rgba(255,62,62,0.4)] opacity-100'}
                             `}
                         >
-                            {loading ? '' : 'Roast It'}
+                            {loading ? '' : (!!user && usageInfo?.remaining === 0) ? 'Limit Reached' : 'Roast It'}
                             {!loading && <FireIcon className="w-4 h-4" />}
                         </button>
                     </div>

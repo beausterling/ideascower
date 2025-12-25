@@ -2,6 +2,44 @@ export { supabase } from "../lib/supabaseClient";
 import { supabase } from "../lib/supabaseClient";
 import { BadIdea, Profile, RoastedIdea } from "../types";
 
+/**
+ * Interface for roast usage/rate limit info
+ */
+export interface RoastUsageInfo {
+  remaining: number;
+  resetAt: string | null;
+  limit?: number;
+}
+
+/**
+ * Interface for roast result with usage info
+ */
+export interface RoastResult {
+  roast: string;
+  savedId?: string;
+  remaining: number;
+  resetAt: string | null;
+}
+
+/**
+ * Error types for roast API
+ */
+export type RoastErrorCode = 'AUTH_REQUIRED' | 'AUTH_INVALID' | 'RATE_LIMITED' | 'UNKNOWN';
+
+export class RoastError extends Error {
+  code: RoastErrorCode;
+  remaining?: number;
+  resetAt?: string | null;
+
+  constructor(message: string, code: RoastErrorCode, remaining?: number, resetAt?: string | null) {
+    super(message);
+    this.name = 'RoastError';
+    this.code = code;
+    this.remaining = remaining;
+    this.resetAt = resetAt;
+  }
+}
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 /**
@@ -83,33 +121,117 @@ export const getCurrentIssueNumber = async (): Promise<number> => {
 };
 
 /**
+ * Checks the user's current roast usage/rate limit status.
+ * Requires authentication.
+ */
+export const checkRoastUsage = async (): Promise<RoastUsageInfo> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('check-roast-usage');
+
+    if (error) {
+      // Check if it's an auth error
+      if (error.message?.includes('401') || error.message?.includes('Auth')) {
+        throw new RoastError('Authentication required', 'AUTH_REQUIRED');
+      }
+      throw error;
+    }
+
+    return {
+      remaining: data.remaining ?? 3,
+      resetAt: data.resetAt ?? null,
+      limit: data.limit ?? 3,
+    };
+  } catch (error) {
+    if (error instanceof RoastError) {
+      throw error;
+    }
+    console.error("Error checking roast usage:", error instanceof Error ? error.message : String(error));
+    // Return default values on error
+    return { remaining: 3, resetAt: null, limit: 3 };
+  }
+};
+
+/**
  * Roasts a user's idea via Supabase edge function.
+ * Requires authentication. Enforces rate limiting (3 per 24h).
  * Optionally saves the roast to the user's history.
  */
 export const roastUserIdea = async (
   idea: string,
   options?: { save?: boolean; isPublic?: boolean }
-): Promise<{ roast: string; savedId?: string }> => {
+): Promise<RoastResult> => {
+  const { data, error } = await supabase.functions.invoke('roast-idea', {
+    body: {
+      idea,
+      save: options?.save ?? false,
+      isPublic: options?.isPublic ?? false,
+    },
+  });
+
+  if (error) {
+    // Parse the error response to get details
+    let errorData: any = {};
+    try {
+      // The error context may contain the response body
+      if (error.context?.body) {
+        errorData = JSON.parse(await error.context.body.text());
+      }
+    } catch {
+      // Ignore parse errors
+    }
+
+    const code = errorData.code as RoastErrorCode || 'UNKNOWN';
+
+    if (code === 'AUTH_REQUIRED' || code === 'AUTH_INVALID') {
+      throw new RoastError(errorData.error || 'Authentication required', code);
+    }
+
+    if (code === 'RATE_LIMITED') {
+      throw new RoastError(
+        errorData.error || 'Rate limit exceeded',
+        'RATE_LIMITED',
+        errorData.remaining ?? 0,
+        errorData.resetAt ?? null
+      );
+    }
+
+    throw new RoastError(
+      error.message || 'Unknown error',
+      'UNKNOWN'
+    );
+  }
+
+  return {
+    roast: data.roast || "The idea was so bad I was left speechless.",
+    savedId: data.savedId,
+    remaining: data.remaining ?? 0,
+    resetAt: data.resetAt ?? null,
+  };
+};
+
+/**
+ * Saves a roast to the user's history without re-roasting.
+ * Does NOT count against the rate limit.
+ */
+export const saveRoast = async (
+  idea: string,
+  roast: string,
+  isPublic: boolean = false
+): Promise<{ savedId: string } | null> => {
   try {
-    const { data, error } = await supabase.functions.invoke('roast-idea', {
-      body: {
-        idea,
-        save: options?.save ?? false,
-        isPublic: options?.isPublic ?? false,
-      },
+    const { data, error } = await supabase.functions.invoke('save-roast', {
+      body: { idea, roast, isPublic },
     });
 
     if (error) {
-      throw error;
+      console.error('Error saving roast:', error);
+      return null;
     }
 
-    return {
-      roast: data.roast || "The idea was so bad I was left speechless.",
-      savedId: data.savedId,
-    };
+    return { savedId: data.savedId };
   } catch (error) {
-    console.error("Error roasting idea:", error instanceof Error ? error.message : String(error));
-    return { roast: "My roasting circuits are overheated. Try again later." };
+    console.error('Error saving roast:', error);
+    return null;
   }
 };
 
