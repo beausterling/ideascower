@@ -33,14 +33,27 @@ const App: React.FC = () => {
 
   // Check for pending redirect AFTER auth loading completes
   useEffect(() => {
-    if (!authLoading && !hasCheckedRedirect) {
-      const pendingRedirect = localStorage.getItem(PENDING_REDIRECT_KEY);
-      if (pendingRedirect && user) {
-        localStorage.removeItem(PENDING_REDIRECT_KEY);
-        setActiveSection(pendingRedirect as AppSection);
-      }
+    // Don't check until auth is done loading
+    if (authLoading) return;
+    // Already checked
+    if (hasCheckedRedirect) return;
+
+    const pendingRedirect = localStorage.getItem(PENDING_REDIRECT_KEY);
+
+    // If there's no pending redirect, we're done
+    if (!pendingRedirect) {
+      setHasCheckedRedirect(true);
+      return;
+    }
+
+    // If there's a pending redirect and user is logged in, do the redirect
+    if (user) {
+      localStorage.removeItem(PENDING_REDIRECT_KEY);
+      setActiveSection(pendingRedirect as AppSection);
       setHasCheckedRedirect(true);
     }
+    // If user is null but there's a pending redirect, DON'T set hasCheckedRedirect
+    // This allows the effect to run again when user becomes available
   }, [authLoading, user, hasCheckedRedirect]);
 
   // Fetch current issue number on mount
