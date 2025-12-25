@@ -56,8 +56,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode: initialMod
         </h2>
         <p className="text-gray-400 text-sm mb-6">
           {mode === 'signin'
-            ? 'Sign in to roast ideas and chat with The Liquidator'
-            : 'Create an account to access premium failure analysis'}
+            ? 'Sign in to get your ideas ROASTED.'
+            : 'Sign up to get your ideas ROASTED.'}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
