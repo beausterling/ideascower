@@ -18,19 +18,16 @@ export interface DailyIdea {
 }
 
 /**
- * Fetches a "Bad Idea of the Day" for a specific date.
- * Queries the daily_ideas table directly from Supabase.
+ * Fetches a "Bad Idea of the Day" by issue number.
+ * Queries the daily_ideas table by issue_number (source of truth).
+ * Returns the idea along with its date for display.
  */
-export const getDailyBadIdea = async (targetDate?: Date): Promise<BadIdea> => {
+export const getDailyBadIdeaByIssue = async (issueNumber: number): Promise<BadIdea & { date: string }> => {
   try {
-    const dateObj = targetDate || new Date();
-    const dateString = dateObj.toISOString().split('T')[0];
-
-    // Query the daily_ideas table directly
     const { data, error } = await supabase
       .from('daily_ideas')
       .select('*')
-      .eq('date', dateString)
+      .eq('issue_number', issueNumber)
       .single();
 
     if (error) {
@@ -39,7 +36,7 @@ export const getDailyBadIdea = async (targetDate?: Date): Promise<BadIdea> => {
     }
 
     if (!data) {
-      throw new Error(`No idea found for date: ${dateString}`);
+      throw new Error(`No idea found for issue #${issueNumber}`);
     }
 
     return {
@@ -47,6 +44,7 @@ export const getDailyBadIdea = async (targetDate?: Date): Promise<BadIdea> => {
       pitch: data.pitch,
       fatalFlaw: data.fatal_flaw,
       verdict: data.verdict,
+      date: data.date,
     };
   } catch (error) {
     console.error("Error fetching daily idea:", error instanceof Error ? error.message : String(error));
@@ -54,8 +52,33 @@ export const getDailyBadIdea = async (targetDate?: Date): Promise<BadIdea> => {
       title: "Error 404: Idea Not Found",
       pitch: "A service that promises to find ideas but fails due to API errors.",
       fatalFlaw: "Reliability is key.",
-      verdict: "Try refreshing."
+      verdict: "Try refreshing.",
+      date: new Date().toISOString().split('T')[0],
     };
+  }
+};
+
+/**
+ * Gets the current (latest) issue number from the database.
+ */
+export const getCurrentIssueNumber = async (): Promise<number> => {
+  try {
+    const { data, error } = await supabase
+      .from('daily_ideas')
+      .select('issue_number')
+      .order('issue_number', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data) {
+      console.error('Error fetching current issue:', error);
+      return 1;
+    }
+
+    return data.issue_number;
+  } catch (error) {
+    console.error('Error fetching current issue:', error);
+    return 1;
   }
 };
 

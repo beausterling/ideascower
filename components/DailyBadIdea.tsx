@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { BadIdea } from '../types';
-import { getDailyBadIdea } from '../services/supabaseService';
+import { getDailyBadIdeaByIssue } from '../services/supabaseService';
 import { ExclamationTriangleIcon, ClockIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline';
 
-const STORAGE_KEY_PREFIX = 'ideascower_idea_';
+const STORAGE_KEY_PREFIX = 'ideascower_idea_issue_';
 
 const SmokeReveal: React.FC = () => {
   // Generate smoke particles with randomized properties
@@ -84,12 +84,13 @@ const CardSkeleton: React.FC = () => {
 };
 
 interface DailyBadIdeaProps {
-  targetDate: Date;
+  issueNumber: number;
   isToday: boolean;
+  onDateLoaded?: (date: string) => void;
 }
 
-const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
-  const [idea, setIdea] = useState<BadIdea | null>(null);
+const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ issueNumber, isToday, onDateLoaded }) => {
+  const [idea, setIdea] = useState<(BadIdea & { date: string }) | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [timeLeft, setTimeLeft] = useState<string>('');
 
@@ -124,15 +125,18 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
       setLoading(true);
       setIdea(null);
 
-      // Create a unique key for this specific date: YYYY-MM-DD
-      const dateKey = targetDate.toISOString().split('T')[0];
-      const storageKey = `${STORAGE_KEY_PREFIX}${dateKey}`;
+      // Create a unique key for this issue number
+      const storageKey = `${STORAGE_KEY_PREFIX}${issueNumber}`;
       const storedData = localStorage.getItem(storageKey);
 
       // Check cache first
       if (storedData) {
         try {
-          setIdea(JSON.parse(storedData));
+          const cached = JSON.parse(storedData);
+          setIdea(cached);
+          if (onDateLoaded && cached.date) {
+            onDateLoaded(cached.date);
+          }
           setLoading(false);
           return;
         } catch (e) {
@@ -140,11 +144,14 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
         }
       }
 
-      // Fetch from API
+      // Fetch from API by issue number
       try {
-        const data = await getDailyBadIdea(targetDate);
+        const data = await getDailyBadIdeaByIssue(issueNumber);
         localStorage.setItem(storageKey, JSON.stringify(data));
         setIdea(data);
+        if (onDateLoaded && data.date) {
+          onDateLoaded(data.date);
+        }
       } catch (error) {
         console.error("Failed to fetch daily idea", error instanceof Error ? error.message : String(error));
       } finally {
@@ -153,7 +160,7 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
     };
 
     fetchAndCacheIdea();
-  }, [targetDate]); // Refetch when date changes
+  }, [issueNumber, onDateLoaded]); // Refetch when issue number changes
 
   if (loading) {
     return (
@@ -210,7 +217,7 @@ const DailyBadIdea: React.FC<DailyBadIdeaProps> = ({ targetDate, isToday }) => {
                     Next Idea in <span className="text-white tabular-nums">{timeLeft}</span>
                   </>
               ) : (
-                  <span className="text-gray-500">Record #{targetDate.toISOString().split('T')[0].replace(/-/g,'')}</span>
+                  <span className="text-gray-500">Issue #{issueNumber}</span>
               )}
             </div>
           </div>
