@@ -11,8 +11,18 @@ import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRigh
 // Using the raw GitHub URL based on the permalink provided
 const LOGO_URL = 'https://raw.githubusercontent.com/beausterling/ideascower/4c6e1e1e8cf5f4be09ace4a45deedd45ae7e83f0/lava-ball-final.png';
 
+const PENDING_REDIRECT_KEY = 'ideascower_pending_redirect';
+
 const App: React.FC = () => {
-  const [activeSection, setActiveSection] = useState<AppSection>(AppSection.DAILY_DOOM);
+  const [activeSection, setActiveSection] = useState<AppSection>(() => {
+    // Check if there's a pending redirect (e.g., after OAuth)
+    const pendingRedirect = localStorage.getItem(PENDING_REDIRECT_KEY);
+    if (pendingRedirect) {
+      localStorage.removeItem(PENDING_REDIRECT_KEY);
+      return pendingRedirect as AppSection;
+    }
+    return AppSection.DAILY_DOOM;
+  });
   const [imgError, setImgError] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

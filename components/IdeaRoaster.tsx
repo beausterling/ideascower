@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { roastUserIdea } from '../services/supabaseService';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
+import { AppSection } from '../types';
 import { FireIcon, BookmarkIcon, GlobeAltIcon, LockClosedIcon, CheckIcon } from '@heroicons/react/24/solid';
 import ReactMarkdown from 'react-markdown';
 
 const PENDING_IDEA_KEY = 'ideascower_pending_idea';
+const PENDING_REDIRECT_KEY = 'ideascower_pending_redirect';
 
 const FirePit: React.FC = () => {
   // Generate random particles for the fire
@@ -212,7 +214,11 @@ const IdeaRoaster: React.FC = () => {
                     Sign in or create an account to see the full roast. Your idea is saved and ready to go.
                   </p>
                   <button
-                    onClick={() => setShowAuthModal(true)}
+                    onClick={() => {
+                      // Store redirect destination for OAuth flow
+                      localStorage.setItem(PENDING_REDIRECT_KEY, AppSection.ROAST_LAB);
+                      setShowAuthModal(true);
+                    }}
                     className="w-full sm:w-auto bg-tower-accent text-white px-8 py-3 font-mono uppercase tracking-wider hover:bg-white hover:text-black transition"
                   >
                     Sign In to See Roast
