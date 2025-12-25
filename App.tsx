@@ -338,9 +338,7 @@ const App: React.FC = () => {
                 </div>
             ) : activeSection === AppSection.ROAST_LAB ? (
                 <div className="animate-fade-in-up">
-                    <ProtectedRoute feature="The Incinerator">
-                        <IdeaRoaster />
-                    </ProtectedRoute>
+                    <IdeaRoaster />
                 </div>
             ) : (
                 <div className="animate-fade-in-up">
