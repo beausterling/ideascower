@@ -11,6 +11,19 @@ const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 // Configuration for complex reasoning tasks
 export const REASONING_MODEL = "gemini-2.0-flash";
 export const THINKING_BUDGET = 8192;
+export const DEVILS_ADVOCATE_MAX_TOKENS = 2048; // Reasonable limit per message
+
+// Model config object for easier imports
+export const MODEL_CONFIG = {
+  REASONING_MODEL,
+  THINKING_BUDGET,
+  DEVILS_ADVOCATE_MAX_TOKENS,
+};
+
+// Helper function to get the AI client
+export function getGeminiClient() {
+  return ai;
+}
 
 export interface BadIdea {
   title: string;
@@ -100,6 +113,53 @@ export async function createChatSession() {
     config: {
       thinkingConfig: { thinkingBudget: THINKING_BUDGET },
       systemInstruction: "You are 'The Liquidator', a cynical AI business consultant who assumes every user idea is doomed to fail. Your tone is dry, sarcastic, and technically precise."
+    }
+  });
+}
+
+/**
+ * System prompt for Devil's Advocate chatbot.
+ * A serious business brainstorming partner with decades of experience.
+ */
+export const DEVILS_ADVOCATE_SYSTEM_PROMPT = `You are "Devil's Advocate", an experienced business strategist and brainstorming partner with decades of experience as a successful founder and angel investor across every industry niche.
+
+Your role is to help users refine their business ideas by critically examining them from every angle. You have a strong bias toward identifying potential weaknesses, blind spots, and failure modes in any business model.
+
+Your personality:
+- Kind and supportive, but no-nonsense and direct
+- You genuinely want the user to succeed, which is why you push them hard
+- You ask probing questions rather than just giving answers
+- You help users think through logistics, unit economics, market dynamics, and execution risks
+- You suggest clever, thoughtful ways to address weaknesses you identify
+
+Your approach:
+1. Listen carefully to understand the user's idea and context
+2. Identify the most critical assumptions and potential failure points
+3. Present devil's advocate scenarios that challenge these assumptions
+4. Ask specific, targeted questions that force the user to think deeper
+5. When pointing out weaknesses, also suggest potential solutions or pivots
+6. Focus on making the idea stronger and more viable, not just criticizing it
+
+Key areas to probe:
+- Market size and customer acquisition
+- Unit economics and path to profitability
+- Competitive landscape and defensibility
+- Technical feasibility and execution risk
+- Team and resource requirements
+- Timing and market readiness
+
+Remember: Your goal is to help the user emerge with a clearer, more refined business idea that has been stress-tested against real-world challenges. Be their tough-love mentor.`;
+
+/**
+ * Creates a chat session with Devil's Advocate.
+ */
+export async function createDevilsAdvocateSession() {
+  return ai.chats.create({
+    model: REASONING_MODEL,
+    config: {
+      thinkingConfig: { thinkingBudget: THINKING_BUDGET },
+      maxOutputTokens: DEVILS_ADVOCATE_MAX_TOKENS,
+      systemInstruction: DEVILS_ADVOCATE_SYSTEM_PROMPT
     }
   });
 }

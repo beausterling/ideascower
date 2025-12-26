@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AppSection } from './types';
 import DailyBadIdea from './components/DailyBadIdea';
 import IdeaRoaster from './components/IdeaRoaster';
+import DevilsAdvocate from './components/DevilsAdvocate';
 import CalendarModal from './components/CalendarModal';
 import ProtectedRoute from './components/ProtectedRoute';
 import Profile from './components/Profile';
 import { useAuth } from './contexts/AuthContext';
 import { getAvailableIdeaDates, getCurrentIssueNumber } from './services/supabaseService';
-import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, ArchiveBoxIcon, Bars3Icon, XMarkIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, ArchiveBoxIcon, Bars3Icon, XMarkIcon, UserCircleIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 
 // Using the raw GitHub URL based on the permalink provided
 const LOGO_URL = 'https://raw.githubusercontent.com/beausterling/ideascower/4c6e1e1e8cf5f4be09ace4a45deedd45ae7e83f0/lava-ball-final.png';
@@ -212,6 +213,16 @@ const App: React.FC = () => {
               </button>
 
               <button
+                onClick={() => setActiveSection(AppSection.DEVILS_ADVOCATE)}
+                className={`font-mono text-sm uppercase tracking-widest py-1 border-b-2 transition-all
+                  ${activeSection === AppSection.DEVILS_ADVOCATE
+                    ? 'border-indigo-500 text-white'
+                    : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+              >
+                Devil's Advocate
+              </button>
+
+              <button
                 onClick={() => setActiveSection(AppSection.PROFILE)}
                 className={`font-mono text-sm uppercase tracking-widest py-1 border-b-2 transition-all
                   ${activeSection === AppSection.PROFILE
@@ -281,6 +292,18 @@ const App: React.FC = () => {
                     >
                       <FireIcon className="w-5 h-5" aria-hidden="true" />
                       <span>The Incinerator</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleSectionChange(AppSection.DEVILS_ADVOCATE)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 font-mono text-sm uppercase tracking-wider transition-all
+                        ${activeSection === AppSection.DEVILS_ADVOCATE
+                          ? 'bg-indigo-500/10 text-indigo-400 border-l-2 border-indigo-500'
+                          : 'text-gray-400 hover:text-white hover:bg-tower-gray/30'}`}
+                      role="menuitem"
+                    >
+                      <ChatBubbleLeftRightIcon className="w-5 h-5" aria-hidden="true" />
+                      <span>Devil's Advocate</span>
                     </button>
                   </div>
                 </div>
@@ -369,6 +392,10 @@ const App: React.FC = () => {
             ) : activeSection === AppSection.ROAST_LAB ? (
                 <div className="animate-fade-in-up">
                     <IdeaRoaster />
+                </div>
+            ) : activeSection === AppSection.DEVILS_ADVOCATE ? (
+                <div className="animate-fade-in-up">
+                    <DevilsAdvocate />
                 </div>
             ) : (
                 <div className="animate-fade-in-up">

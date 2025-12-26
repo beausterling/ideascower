@@ -3,6 +3,34 @@ import { supabase } from "../lib/supabaseClient";
 import { BadIdea, Profile, RoastedIdea } from "../types";
 
 /**
+ * Interface for Devil's Advocate usage/rate limit info
+ */
+export interface DevilsAdvocateUsageInfo {
+  remaining: number;
+  resetAt: string | null;
+  limit?: number;
+}
+
+/**
+ * Error types for Devil's Advocate API
+ */
+export type DevilsAdvocateErrorCode = 'AUTH_REQUIRED' | 'AUTH_INVALID' | 'RATE_LIMITED' | 'UNKNOWN';
+
+export class DevilsAdvocateError extends Error {
+  code: DevilsAdvocateErrorCode;
+  remaining?: number;
+  resetAt?: string | null;
+
+  constructor(message: string, code: DevilsAdvocateErrorCode, remaining?: number, resetAt?: string | null) {
+    super(message);
+    this.name = 'DevilsAdvocateError';
+    this.code = code;
+    this.remaining = remaining;
+    this.resetAt = resetAt;
+  }
+}
+
+/**
  * Interface for roast usage/rate limit info
  */
 export interface RoastUsageInfo {
@@ -484,4 +512,136 @@ export const deleteRoastedIdea = async (ideaId: string): Promise<boolean> => {
     console.error('Error deleting roasted idea:', error);
     return false;
   }
+};
+
+/**
+ * Checks the user's current Devil's Advocate usage/rate limit status.
+ * Requires authentication.
+ */
+export const checkDevilsAdvocateUsage = async (): Promise<DevilsAdvocateUsageInfo> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('check-devils-advocate-usage');
+
+    if (error) {
+      // Check if it's an auth error
+      if (error.message?.includes('401') || error.message?.includes('Auth')) {
+        throw new DevilsAdvocateError('Authentication required', 'AUTH_REQUIRED');
+      }
+      throw error;
+    }
+
+    return {
+      remaining: data.remaining ?? 5,
+      resetAt: data.resetAt ?? null,
+      limit: data.limit ?? 5,
+    };
+  } catch (error) {
+    if (error instanceof DevilsAdvocateError) {
+      throw error;
+    }
+    console.error("Error checking Devil's Advocate usage:", error instanceof Error ? error.message : String(error));
+    // Return default values on error
+    return { remaining: 5, resetAt: null, limit: 5 };
+  }
+};
+
+/**
+ * Sends a message to Devil's Advocate and returns a stream of responses.
+ * Requires authentication. Enforces rate limiting (5 messages per 24h).
+ */
+export const sendDevilsAdvocateMessage = async (history: any[], message: string) => {
+  const session = await supabase.auth.getSession();
+  const accessToken = session.data.session?.access_token;
+
+  if (!accessToken) {
+    throw new DevilsAdvocateError('Authentication required', 'AUTH_REQUIRED');
+  }
+
+  const url = `${SUPABASE_URL}/functions/v1/devils-advocate-chat`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ history, message }),
+  });
+
+  if (!response.ok) {
+    // Try to parse error response
+    try {
+      const errorData = await response.json();
+      const code = errorData.code as DevilsAdvocateErrorCode || 'UNKNOWN';
+
+      if (code === 'AUTH_REQUIRED' || code === 'AUTH_INVALID') {
+        throw new DevilsAdvocateError(errorData.error || 'Authentication required', code);
+      }
+
+      if (code === 'RATE_LIMITED') {
+        throw new DevilsAdvocateError(
+          errorData.error || 'Rate limit exceeded',
+          'RATE_LIMITED',
+          errorData.remaining ?? 0,
+          errorData.resetAt ?? null
+        );
+      }
+
+      throw new DevilsAdvocateError(errorData.error || 'Unknown error', 'UNKNOWN');
+    } catch (e) {
+      if (e instanceof DevilsAdvocateError) throw e;
+      throw new DevilsAdvocateError(`HTTP error! status: ${response.status}`, 'UNKNOWN');
+    }
+  }
+
+  // Return an async generator that reads from the SSE stream
+  return {
+    [Symbol.asyncIterator]: async function* () {
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new DevilsAdvocateError('No response body', 'UNKNOWN');
+      }
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+
+              if (data === '[DONE]') {
+                return;
+              }
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.text) {
+                  yield { text: parsed.text };
+                } else if (parsed.done) {
+                  // Usage info update
+                  yield { usageInfo: { remaining: parsed.remaining, resetAt: parsed.resetAt } };
+                } else if (parsed.error) {
+                  throw new DevilsAdvocateError(parsed.error, 'UNKNOWN');
+                }
+              } catch (e) {
+                if (e instanceof DevilsAdvocateError) throw e;
+                // Skip invalid JSON
+                continue;
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    }
+  };
 };
