@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
 
     // Try to get idea from database
     const { data: existingIdea, error: fetchError } = await supabaseClient
-      .from('ideas')
+      .from('daily_ideas')
       .select('*')
       .eq('date', dateString)
       .single();
@@ -63,11 +63,21 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
+    // Get the next issue_number
+    const { data: maxIssue } = await supabaseServiceClient
+      .from('daily_ideas')
+      .select('issue_number')
+      .order('issue_number', { ascending: false })
+      .limit(1)
+      .single();
+
+    const nextIssueNumber = (maxIssue?.issue_number ?? 0) + 1;
+
     await supabaseServiceClient
-      .from('ideas')
+      .from('daily_ideas')
       .insert({
+        issue_number: nextIssueNumber,
         date: dateString,
-        seed: seed,
         title: idea.title,
         pitch: idea.pitch,
         fatal_flaw: idea.fatalFlaw,

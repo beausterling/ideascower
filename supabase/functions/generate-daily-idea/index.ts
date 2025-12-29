@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
 
     // Check if idea already exists for this date
     const { data: existingIdea } = await supabaseClient
-      .from('ideas')
+      .from('daily_ideas')
       .select('*')
       .eq('date', dateString)
       .single();
@@ -47,16 +47,26 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Get the next issue_number
+    const { data: maxIssue } = await supabaseClient
+      .from('daily_ideas')
+      .select('issue_number')
+      .order('issue_number', { ascending: false })
+      .limit(1)
+      .single();
+
+    const nextIssueNumber = (maxIssue?.issue_number ?? 0) + 1;
+
     // Generate new idea
-    console.log(`Generating idea for date: ${dateString}, seed: ${seed}`);
+    console.log(`Generating idea for date: ${dateString}, seed: ${seed}, issue: ${nextIssueNumber}`);
     const idea = await generateDailyBadIdea(targetDate);
 
     // Store in database
     const { data, error } = await supabaseClient
-      .from('ideas')
+      .from('daily_ideas')
       .insert({
+        issue_number: nextIssueNumber,
         date: dateString,
-        seed: seed,
         title: idea.title,
         pitch: idea.pitch,
         fatal_flaw: idea.fatalFlaw,
@@ -81,10 +91,24 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in generate-daily-idea:', error);
+    let errorMessage: string;
+    let errorDetails: unknown;
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      errorDetails = { stack: error.stack, name: error.name };
+    } else if (typeof error === 'object' && error !== null) {
+      errorMessage = JSON.stringify(error);
+      errorDetails = error;
+    } else {
+      errorMessage = String(error);
+    }
+
+    console.error('Error in generate-daily-idea:', errorMessage, errorDetails);
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: errorMessage,
+        details: errorDetails
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -118,13 +118,10 @@ const App: React.FC = () => {
 
   // Callback when DailyBadIdea loads the date from DB
   const handleDateLoaded = useCallback((dateStr: string) => {
-    // Convert UTC date string to local display format
-    const date = new Date(dateStr + 'T00:00:00Z');
-    const formatted = date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    // Parse UTC date string directly without timezone conversion
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const formatted = `${months[month - 1]} ${day}, ${year}`;
     setDisplayDate(formatted);
   }, []);
 
@@ -319,6 +316,7 @@ const App: React.FC = () => {
                                 <div className="flex items-center justify-center gap-3 text-gray-400 mb-2">
                                     <CalendarDaysIcon className="w-5 h-5" />
                                     <span className="font-serif text-lg tracking-wide">{displayDate || 'Loading...'}</span>
+                                    <span className="text-[10px] text-gray-600 font-mono self-end mb-0.5">UTC</span>
                                 </div>
 
                                 {/* Issue Number with History and Current buttons */}
