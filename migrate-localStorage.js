@@ -47,9 +47,15 @@ async function migrateLocalStorageToSupabase() {
     return;
   }
 
-  // Get Supabase client from the global scope (should be available in your app)
-  const supabaseUrl = 'https://ncoasjfowlpnkfvpiibu.supabase.co';
-  const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jb2FzamZvd2xwbmtmdnBpaWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ2NTM3NzAsImV4cCI6MjA1MDIyOTc3MH0.vQPyH4LGJTkzvkBRJx7D9e6PqQGgDNPuv0j9PGH7sck';
+  // Get Supabase credentials from environment or prompt user
+  // These should be set in your .env file or passed when running the script
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || prompt('Enter your Supabase URL:');
+  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || prompt('Enter your Supabase Anon Key:');
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('❌ Missing Supabase credentials. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
+    return;
+  }
 
   // Create Supabase client
   const { createClient } = window.supabase || {};
