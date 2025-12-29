@@ -1,10 +1,21 @@
 #!/bin/bash
 
 # Test script for Supabase Edge Functions
-# Make sure to replace YOUR_ANON_KEY with your actual key
+# Set environment variables before running:
+#   export SUPABASE_URL="https://your-project.supabase.co"
+#   export SUPABASE_ANON_KEY="your-anon-key"
 
-SUPABASE_URL="https://ujtlptjowaillhhqnwrb.supabase.co"
-ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqdGxwdGpvd2FpbGxoaHFud3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwODQ0MzgsImV4cCI6MjA4MTY2MDQzOH0.M8pl4tG7akBNr2hFVl7OTEdZnSD9tKLNYcM_IjEFnlU"
+if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+  echo "❌ Error: SUPABASE_URL and SUPABASE_ANON_KEY environment variables must be set"
+  echo ""
+  echo "Usage:"
+  echo "  export SUPABASE_URL='https://your-project.supabase.co'"
+  echo "  export SUPABASE_ANON_KEY='your-anon-key'"
+  echo "  ./test-functions.sh"
+  exit 1
+fi
+
+ANON_KEY="$SUPABASE_ANON_KEY"
 
 echo "🧪 Testing Supabase Edge Functions..."
 echo ""
