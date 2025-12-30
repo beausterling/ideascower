@@ -37,6 +37,19 @@ const App: React.FC = () => {
   // Devil's Advocate chat overlay state (separate from main navigation)
   const [isDevilsAdvocateOpen, setIsDevilsAdvocateOpen] = useState(false);
 
+  // Disable body scroll when Devil's Advocate overlay is open
+  useEffect(() => {
+    if (isDevilsAdvocateOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isDevilsAdvocateOpen]);
+
   // Check for pending redirect AFTER auth loading completes
   useEffect(() => {
     // Don't check until auth is done loading
