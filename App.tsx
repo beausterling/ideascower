@@ -34,6 +34,9 @@ const App: React.FC = () => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
 
+  // Devil's Advocate chat overlay state (separate from main navigation)
+  const [isDevilsAdvocateOpen, setIsDevilsAdvocateOpen] = useState(false);
+
   // Check for pending redirect AFTER auth loading completes
   useEffect(() => {
     // Don't check until auth is done loading
@@ -215,16 +218,6 @@ const App: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveSection(AppSection.DEVILS_ADVOCATE)}
-                className={`font-mono text-sm uppercase tracking-widest py-1 border-b-2 transition-all
-                  ${activeSection === AppSection.DEVILS_ADVOCATE
-                    ? 'border-indigo-500 text-white'
-                    : 'border-transparent text-gray-500 hover:text-gray-300'}`}
-              >
-                Devil's Advocate
-              </button>
-
-              <button
                 onClick={() => setActiveSection(AppSection.PROFILE)}
                 className={`font-mono text-sm uppercase tracking-widest py-1 border-b-2 transition-all
                   ${activeSection === AppSection.PROFILE
@@ -297,9 +290,12 @@ const App: React.FC = () => {
                     </button>
 
                     <button
-                      onClick={() => handleSectionChange(AppSection.DEVILS_ADVOCATE)}
+                      onClick={() => {
+                        setIsDevilsAdvocateOpen(true);
+                        setIsMobileMenuOpen(false);
+                      }}
                       className={`w-full flex items-center gap-3 px-4 py-3 font-mono text-sm uppercase tracking-wider transition-all
-                        ${activeSection === AppSection.DEVILS_ADVOCATE
+                        ${isDevilsAdvocateOpen
                           ? 'bg-indigo-500/10 text-indigo-400 border-l-2 border-indigo-500'
                           : 'text-gray-400 hover:text-white hover:bg-tower-gray/30'}`}
                       role="menuitem"
@@ -397,12 +393,6 @@ const App: React.FC = () => {
                         <IdeaRoaster />
                     </div>
                 </Suspense>
-            ) : activeSection === AppSection.DEVILS_ADVOCATE ? (
-                <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="text-gray-500 font-mono text-sm animate-pulse">Loading...</div></div>}>
-                    <div className="animate-fade-in-up">
-                        <DevilsAdvocate />
-                    </div>
-                </Suspense>
             ) : (
                 <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="text-gray-500 font-mono text-sm animate-pulse">Loading...</div></div>}>
                     <div className="animate-fade-in-up">
@@ -434,6 +424,37 @@ const App: React.FC = () => {
         currentDate={displayDate ? new Date(displayDate) : new Date()}
         launchDate={new Date('2025-12-13T00:00:00Z')}
       />
+
+      {/* Devil's Advocate Floating Button - Desktop only */}
+      <button
+        onClick={() => setIsDevilsAdvocateOpen(true)}
+        className={`hidden sm:flex fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-lg transition-all duration-300 items-center justify-center
+          ${isDevilsAdvocateOpen
+            ? 'bg-indigo-700 text-white scale-0 opacity-0'
+            : 'bg-indigo-600 hover:bg-indigo-500 text-white hover:scale-110 shadow-[0_0_20px_rgba(99,102,241,0.4)]'}`}
+        aria-label="Open Devil's Advocate chat"
+      >
+        <ChatBubbleLeftRightIcon className="w-6 h-6" />
+      </button>
+
+      {/* Devil's Advocate Chat Overlay */}
+      {isDevilsAdvocateOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6"
+          onClick={(e) => {
+            // Close when clicking the backdrop (not the chat window)
+            if (e.target === e.currentTarget) {
+              setIsDevilsAdvocateOpen(false);
+            }
+          }}
+        >
+          <div className="w-full sm:w-[450px] h-full sm:h-[600px] sm:max-h-[80vh] animate-slide-up">
+            <Suspense fallback={<div className="flex items-center justify-center h-full bg-tower-dark"><div className="text-gray-500 font-mono text-sm animate-pulse">Loading...</div></div>}>
+              <DevilsAdvocate onClose={() => setIsDevilsAdvocateOpen(false)} />
+            </Suspense>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

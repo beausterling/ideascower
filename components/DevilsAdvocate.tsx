@@ -3,8 +3,12 @@ import { sendDevilsAdvocateMessage, checkDevilsAdvocateUsage, DevilsAdvocateErro
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
 import { AppSection, ChatMessage } from '../types';
-import { ChatBubbleLeftRightIcon, PaperAirplaneIcon, ClockIcon } from '@heroicons/react/24/solid';
+import { ChatBubbleLeftRightIcon, PaperAirplaneIcon, ClockIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import ReactMarkdown from 'react-markdown';
+
+interface DevilsAdvocateProps {
+  onClose?: () => void;
+}
 
 const PENDING_MESSAGE_KEY = 'ideascower_pending_devils_advocate_message';
 const PENDING_REDIRECT_KEY = 'ideascower_pending_redirect';
@@ -26,7 +30,7 @@ const formatTimeRemaining = (resetAt: string): string => {
   return `${minutes}m`;
 };
 
-const DevilsAdvocate: React.FC = () => {
+const DevilsAdvocate: React.FC<DevilsAdvocateProps> = ({ onClose }) => {
   const { user } = useAuth();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -231,10 +235,10 @@ const DevilsAdvocate: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 sm:p-6">
+    <div className="w-full h-full flex flex-col">
 
-      {/* Main Container Card */}
-      <div className="relative border border-gray-800 bg-[#080808] overflow-hidden shadow-2xl transition-all duration-500">
+      {/* Main Container Card - Full height for overlay mode */}
+      <div className="relative border border-gray-800 bg-[#080808] overflow-hidden shadow-2xl transition-all duration-500 flex flex-col h-full">
 
         {/* Ambient Glow - Purple/Blue tint for the advisor feel */}
         <div className="absolute -top-[150px] -left-[150px] w-[600px] h-[600px] rounded-full blur-[120px] pointer-events-none bg-indigo-500/10"></div>
@@ -242,12 +246,28 @@ const DevilsAdvocate: React.FC = () => {
         {/* Secondary Glow (Bottom Right) */}
         <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[100px] pointer-events-none"></div>
 
-        <div className="relative z-10 p-5 sm:p-8 md:p-12">
+        {/* Header with close button */}
+        <div className="relative z-10 flex items-center justify-between p-4 border-b border-gray-800 bg-black/50 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <ChatBubbleLeftRightIcon className="w-5 h-5 text-indigo-400" />
+            <h2 className="text-lg font-serif text-white tracking-tight">Devil's Advocate</h2>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-sm transition-colors"
+              aria-label="Close chat"
+            >
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+          )}
+        </div>
 
-          <div className="text-center mb-8 sm:mb-10">
-            <h2 className="text-3xl sm:text-4xl font-serif text-white mb-3 tracking-tight">Devil's Advocate</h2>
-            <p className="text-gray-400 font-mono text-xs sm:text-sm max-w-lg mx-auto leading-relaxed">
-              Your experienced business strategist. Share your idea and get honest, constructive feedback to make it stronger.
+        <div className="relative z-10 p-4 sm:p-6 flex-1 flex flex-col overflow-hidden">
+
+          <div className="text-center mb-4">
+            <p className="text-gray-400 font-mono text-xs max-w-lg mx-auto leading-relaxed">
+              Your experienced business strategist. Share your idea and get honest, constructive feedback.
             </p>
 
             {/* Usage indicator for authenticated users */}
@@ -270,13 +290,13 @@ const DevilsAdvocate: React.FC = () => {
 
           {/* Rate limit warning */}
           {rateLimitError && (
-            <div className="mb-6 p-4 border border-indigo-500/50 bg-indigo-500/10 rounded-sm">
-              <div className="flex items-center gap-3">
-                <ClockIcon className="w-6 h-6 text-indigo-400 flex-shrink-0" />
+            <div className="mb-4 p-3 border border-indigo-500/50 bg-indigo-500/10 rounded-sm">
+              <div className="flex items-center gap-2">
+                <ClockIcon className="w-5 h-5 text-indigo-400 flex-shrink-0" />
                 <div>
-                  <p className="text-indigo-300 font-mono text-sm">{rateLimitError}</p>
+                  <p className="text-indigo-300 font-mono text-xs">{rateLimitError}</p>
                   {usageInfo?.resetAt && (
-                    <p className="text-indigo-400/70 font-mono text-xs mt-1">
+                    <p className="text-indigo-400/70 font-mono text-[10px] mt-0.5">
                       Next message available in {timeRemaining || formatTimeRemaining(usageInfo.resetAt)}
                     </p>
                   )}
@@ -287,7 +307,7 @@ const DevilsAdvocate: React.FC = () => {
 
           {/* Chat Messages Area */}
           <div
-            className="mb-6 min-h-[200px] max-h-[400px] overflow-y-auto border border-gray-800 rounded-sm bg-black/40 p-4"
+            className="flex-1 min-h-0 overflow-y-auto border border-gray-800 rounded-sm bg-black/40 p-4 mb-4"
             aria-live="polite"
             aria-label="Chat messages"
           >
