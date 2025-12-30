@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { AppSection } from './types';
 import DailyBadIdea from './components/DailyBadIdea';
-import IdeaRoaster from './components/IdeaRoaster';
-import DevilsAdvocate from './components/DevilsAdvocate';
 import CalendarModal from './components/CalendarModal';
 import ProtectedRoute from './components/ProtectedRoute';
-import Profile from './components/Profile';
 import { useAuth } from './contexts/AuthContext';
 import { getAvailableIdeaDates, getCurrentIssueNumber } from './services/supabaseService';
 import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, ArchiveBoxIcon, Bars3Icon, XMarkIcon, UserCircleIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+
+// Lazy load heavy components for better initial page load
+const IdeaRoaster = React.lazy(() => import('./components/IdeaRoaster'));
+const DevilsAdvocate = React.lazy(() => import('./components/DevilsAdvocate'));
+const Profile = React.lazy(() => import('./components/Profile'));
 
 // Using the raw GitHub URL based on the permalink provided
 const LOGO_URL = 'https://raw.githubusercontent.com/beausterling/ideascower/4c6e1e1e8cf5f4be09ace4a45deedd45ae7e83f0/lava-ball-final.png';
@@ -390,19 +392,25 @@ const App: React.FC = () => {
                     <DailyBadIdea issueNumber={viewingIssue} isToday={isToday} onDateLoaded={handleDateLoaded} />
                 </div>
             ) : activeSection === AppSection.ROAST_LAB ? (
-                <div className="animate-fade-in-up">
-                    <IdeaRoaster />
-                </div>
+                <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="text-gray-500 font-mono text-sm animate-pulse">Loading...</div></div>}>
+                    <div className="animate-fade-in-up">
+                        <IdeaRoaster />
+                    </div>
+                </Suspense>
             ) : activeSection === AppSection.DEVILS_ADVOCATE ? (
-                <div className="animate-fade-in-up">
-                    <DevilsAdvocate />
-                </div>
+                <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="text-gray-500 font-mono text-sm animate-pulse">Loading...</div></div>}>
+                    <div className="animate-fade-in-up">
+                        <DevilsAdvocate />
+                    </div>
+                </Suspense>
             ) : (
-                <div className="animate-fade-in-up">
-                    <ProtectedRoute feature="Profile">
-                        <Profile />
-                    </ProtectedRoute>
-                </div>
+                <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="text-gray-500 font-mono text-sm animate-pulse">Loading...</div></div>}>
+                    <div className="animate-fade-in-up">
+                        <ProtectedRoute feature="Profile">
+                            <Profile />
+                        </ProtectedRoute>
+                    </div>
+                </Suspense>
             )}
         </div>
       </main>

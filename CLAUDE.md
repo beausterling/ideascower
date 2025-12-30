@@ -4,8 +4,8 @@
 IdeaScower is a web application that generates and analyzes startup ideas using Google's Gemini AI. The app features three main components:
 
 1. **Daily Bad Idea** - A deterministically generated "bad startup idea" that updates daily at midnight UTC
-2. **The Incinerator** - An AI-powered roasting tool that analyzes and critiques user-submitted ideas
-3. **The Liquidator** - An AI chatbot consultant with a cynical personality
+2. **The Incinerator** - An AI-powered roasting tool that analyzes and critiques user-submitted ideas (3 roasts per 24h for authenticated users)
+3. **Devil's Advocate** - A constructive AI business strategist chatbot that helps users refine their ideas (5 messages per 24h for authenticated users)
 
 ## Architecture
 
@@ -43,9 +43,18 @@ Your goal is to deconstruct why this startup idea will fail. Look for market siz
 Be harsh, witty, and deeply analytical.
 ```
 
-#### ChatBot (The Liquidator)
+#### Devil's Advocate
 ```
-You are 'The Liquidator', a cynical AI business consultant who assumes every user idea is doomed to fail. Your tone is dry, sarcastic, and technically precise.
+You are "Devil's Advocate", an experienced business strategist and brainstorming partner with decades of experience as a successful founder and angel investor across every industry niche.
+
+Your role is to help users refine their business ideas by critically examining them from every angle. You have a strong bias toward identifying potential weaknesses, blind spots, and failure modes in any business model.
+
+Your personality:
+- Kind and supportive, but no-nonsense and direct
+- You genuinely want the user to succeed, which is why you push them hard
+- You ask probing questions rather than just giving answers
+- You help users think through logistics, unit economics, market dynamics, and execution risks
+- You suggest clever, thoughtful ways to address weaknesses you identify
 ```
 
 ## Database Schema
@@ -63,6 +72,15 @@ Stores all generated daily ideas with their metadata.
 | fatal_flaw | text | Analysis of why it will fail |
 | verdict | text | One-sentence summary |
 | created_at | timestamptz | When this record was created |
+
+### `devils_advocate_usage` table
+Tracks rate limiting for Devil's Advocate chat (5 messages per 24 hours per user).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| user_id | uuid | References auth.users(id) |
+| created_at | timestamptz | When the message was sent |
 
 ## API Endpoints (Edge Functions)
 
@@ -97,16 +115,31 @@ Analyzes and roasts a user-submitted idea.
 }
 ```
 
-### 4. `chat`
-Streaming chat endpoint for The Liquidator chatbot.
+### 4. `devils-advocate-chat`
+Streaming chat endpoint for Devil's Advocate with rate limiting.
 
 **Method**: POST
-**Auth**: Public (anon key)
+**Auth**: Required (user must be authenticated)
+**Rate Limit**: 5 messages per 24 hours
 **Body**:
 ```json
 {
   "history": [...],
-  "message": "Will my startup work?"
+  "message": "I want to build an app that helps people..."
+}
+```
+
+### 5. `check-devils-advocate-usage`
+Checks the user's current Devil's Advocate usage/rate limit status.
+
+**Method**: GET
+**Auth**: Required (user must be authenticated)
+**Response**:
+```json
+{
+  "remaining": 4,
+  "resetAt": "2025-12-19T00:00:00Z",
+  "limit": 5
 }
 ```
 
@@ -142,7 +175,8 @@ GEMINI_API_KEY=your_google_ai_api_key_here
    supabase functions deploy generate-daily-idea
    supabase functions deploy get-idea
    supabase functions deploy roast-idea
-   supabase functions deploy chat
+   supabase functions deploy devils-advocate-chat
+   supabase functions deploy check-devils-advocate-usage
    ```
 
 ## Migration from Google AI Studio

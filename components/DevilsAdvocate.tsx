@@ -82,19 +82,22 @@ const DevilsAdvocate: React.FC = () => {
   useEffect(() => {
     if (user) {
       setShowAuthPrompt(false);
-      fetchUsageInfo();
 
-      // Check for pending message and auto-send it
-      const pendingMessage = localStorage.getItem(PENDING_MESSAGE_KEY);
-      if (pendingMessage) {
-        setInput(pendingMessage);
-        // Clear from localStorage and trigger send
-        localStorage.removeItem(PENDING_MESSAGE_KEY);
-        // Small delay to let the component settle
-        setTimeout(() => {
+      // Initialize usage info and handle pending message sequentially
+      const initializeAndSendPending = async () => {
+        // Wait for usage info to load before attempting to send
+        await fetchUsageInfo();
+
+        // Check for pending message and auto-send it
+        const pendingMessage = localStorage.getItem(PENDING_MESSAGE_KEY);
+        if (pendingMessage) {
+          setInput(pendingMessage);
+          localStorage.removeItem(PENDING_MESSAGE_KEY);
           handleSendMessage(pendingMessage);
-        }, 100);
-      }
+        }
+      };
+
+      initializeAndSendPending();
     } else {
       setUsageInfo(null);
     }
@@ -283,7 +286,11 @@ const DevilsAdvocate: React.FC = () => {
           )}
 
           {/* Chat Messages Area */}
-          <div className="mb-6 min-h-[200px] max-h-[400px] overflow-y-auto border border-gray-800 rounded-sm bg-black/40 p-4">
+          <div
+            className="mb-6 min-h-[200px] max-h-[400px] overflow-y-auto border border-gray-800 rounded-sm bg-black/40 p-4"
+            aria-live="polite"
+            aria-label="Chat messages"
+          >
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-[180px] text-gray-600 font-mono text-sm">
                 <div className="text-center">
@@ -384,6 +391,7 @@ const DevilsAdvocate: React.FC = () => {
                 }
                 disabled={loading}
                 rows={3}
+                aria-label="Message input for Devil's Advocate chat"
                 className="w-full bg-transparent p-4 sm:p-6 font-mono outline-none transition-all resize-none rounded-sm placeholder:text-gray-700 text-base sm:text-lg leading-relaxed text-gray-200"
               />
 
