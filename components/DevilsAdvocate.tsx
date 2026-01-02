@@ -238,7 +238,7 @@ const DevilsAdvocate: React.FC<DevilsAdvocateProps> = ({ onClose }) => {
     <div className="w-full h-full flex flex-col">
 
       {/* Main Container Card - Full height for overlay mode */}
-      <div className="relative border border-gray-800 bg-[#080808] overflow-hidden shadow-2xl transition-all duration-500 flex flex-col h-full">
+      <div className="relative border border-gray-800 bg-[#080808] shadow-2xl transition-all duration-500 flex flex-col h-full overflow-hidden">
 
         {/* Ambient Glow - Purple/Blue tint for the advisor feel */}
         <div className="absolute -top-[150px] -left-[150px] w-[600px] h-[600px] rounded-full blur-[120px] pointer-events-none bg-indigo-500/10"></div>
@@ -263,7 +263,7 @@ const DevilsAdvocate: React.FC<DevilsAdvocateProps> = ({ onClose }) => {
           )}
         </div>
 
-        <div className="relative z-10 p-4 sm:p-6 flex-1 flex flex-col overflow-hidden">
+        <div className="relative z-10 p-4 sm:p-6 flex-1 flex flex-col min-h-0">
 
           <div className="text-center mb-4">
             <p className="text-gray-400 font-mono text-xs max-w-lg mx-auto leading-relaxed">
