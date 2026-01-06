@@ -1,13 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { AppSection } from './types';
 import DailyBadIdea from './components/DailyBadIdea';
-import IdeaRoaster from './components/IdeaRoaster';
 import CalendarModal from './components/CalendarModal';
 import ProtectedRoute from './components/ProtectedRoute';
-import Profile from './components/Profile';
 import { useAuth } from './contexts/AuthContext';
 import { getAvailableIdeaDates, getCurrentIssueNumber } from './services/supabaseService';
-import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, ArchiveBoxIcon, Bars3Icon, XMarkIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { FireIcon, NewspaperIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon, ArchiveBoxIcon, Bars3Icon, XMarkIcon, UserCircleIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+
+// Lazy load heavy components for better initial page load
+const IdeaRoaster = React.lazy(() => import('./components/IdeaRoaster'));
+const DevilsAdvocate = React.lazy(() => import('./components/DevilsAdvocate'));
+const Profile = React.lazy(() => import('./components/Profile'));
 
 // Using the raw GitHub URL based on the permalink provided
 const LOGO_URL = 'https://raw.githubusercontent.com/beausterling/ideascower/4c6e1e1e8cf5f4be09ace4a45deedd45ae7e83f0/lava-ball-final.png';
@@ -30,6 +33,22 @@ const App: React.FC = () => {
   // Calendar modal state
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
+
+  // Devil's Advocate chat overlay state (separate from main navigation)
+  const [isDevilsAdvocateOpen, setIsDevilsAdvocateOpen] = useState(false);
+
+  // Disable body scroll when Devil's Advocate overlay is open
+  useEffect(() => {
+    if (isDevilsAdvocateOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isDevilsAdvocateOpen]);
 
   // Check for pending redirect AFTER auth loading completes
   useEffect(() => {
@@ -279,6 +298,21 @@ const App: React.FC = () => {
                       <FireIcon className="w-5 h-5" aria-hidden="true" />
                       <span>The Incinerator</span>
                     </button>
+
+                    <button
+                      onClick={() => {
+                        setIsDevilsAdvocateOpen(true);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 font-mono text-sm uppercase tracking-wider transition-all
+                        ${isDevilsAdvocateOpen
+                          ? 'bg-indigo-500/10 text-indigo-400 border-l-2 border-indigo-500'
+                          : 'text-gray-400 hover:text-white hover:bg-tower-gray/30'}`}
+                      role="menuitem"
+                    >
+                      <ChatBubbleLeftRightIcon className="w-5 h-5" aria-hidden="true" />
+                      <span>Devil's Advocate</span>
+                    </button>
                   </div>
                 </div>
               )}
@@ -365,15 +399,19 @@ const App: React.FC = () => {
                     <DailyBadIdea issueNumber={viewingIssue} isToday={isToday} onDateLoaded={handleDateLoaded} />
                 </div>
             ) : activeSection === AppSection.ROAST_LAB ? (
-                <div className="animate-fade-in-up">
-                    <IdeaRoaster />
-                </div>
+                <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="text-gray-500 font-mono text-sm animate-pulse">Loading...</div></div>}>
+                    <div className="animate-fade-in-up">
+                        <IdeaRoaster />
+                    </div>
+                </Suspense>
             ) : (
-                <div className="animate-fade-in-up">
-                    <ProtectedRoute feature="Profile">
-                        <Profile />
-                    </ProtectedRoute>
-                </div>
+                <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="text-gray-500 font-mono text-sm animate-pulse">Loading...</div></div>}>
+                    <div className="animate-fade-in-up">
+                        <ProtectedRoute feature="Profile">
+                            <Profile />
+                        </ProtectedRoute>
+                    </div>
+                </Suspense>
             )}
         </div>
       </main>
@@ -403,6 +441,37 @@ const App: React.FC = () => {
         currentDate={displayDate ? new Date(displayDate) : new Date()}
         launchDate={new Date('2025-12-13T00:00:00Z')}
       />
+
+      {/* Devil's Advocate Floating Button - Desktop only */}
+      <button
+        onClick={() => setIsDevilsAdvocateOpen(true)}
+        className={`hidden sm:flex fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-lg transition-all duration-300 items-center justify-center
+          ${isDevilsAdvocateOpen
+            ? 'bg-indigo-700 text-white scale-0 opacity-0'
+            : 'bg-indigo-600 hover:bg-indigo-500 text-white hover:scale-110 shadow-[0_0_20px_rgba(99,102,241,0.4)]'}`}
+        aria-label="Open Devil's Advocate chat"
+      >
+        <ChatBubbleLeftRightIcon className="w-6 h-6" />
+      </button>
+
+      {/* Devil's Advocate Chat Overlay */}
+      {isDevilsAdvocateOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6"
+          onClick={(e) => {
+            // Close when clicking the backdrop (not the chat window)
+            if (e.target === e.currentTarget) {
+              setIsDevilsAdvocateOpen(false);
+            }
+          }}
+        >
+          <div className="w-full sm:w-[450px] h-full sm:h-[600px] sm:max-h-[80vh] animate-slide-up">
+            <Suspense fallback={<div className="flex items-center justify-center h-full bg-tower-dark"><div className="text-gray-500 font-mono text-sm animate-pulse">Loading...</div></div>}>
+              <DevilsAdvocate onClose={() => setIsDevilsAdvocateOpen(false)} />
+            </Suspense>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

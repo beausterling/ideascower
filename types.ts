@@ -13,6 +13,7 @@ export interface RoastResult {
 export enum AppSection {
   DAILY_DOOM = 'DAILY_DOOM',
   ROAST_LAB = 'ROAST_LAB',
+  DEVILS_ADVOCATE = 'DEVILS_ADVOCATE',
   PROFILE = 'PROFILE',
 }
 
