@@ -380,10 +380,16 @@ const App: React.FC = () => {
 
       {/* Footer */}
       <footer className="border-t border-tower-gray py-8 mt-auto bg-tower-dark">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-gray-600 font-mono text-xs">
-            &copy; {new Date().getFullYear()} IdeasCower.com ~ Where Ideas Tremble.
-            <span className="block mt-1 text-tower-accent/50">"Don't build this."</span>
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-center">
+            <p className="text-gray-600 font-mono text-xs">
+              &copy; {new Date().getFullYear()} IdeasCower.com ~ Where Ideas Tremble.
+            </p>
+            <p className="mt-1 text-tower-accent/50 font-mono text-xs">"Don't build this."</p>
+          </div>
+          <p className="font-mono text-xs">
+            <span className="text-white">Created by </span>
+            <a href="https://beausterling.xyz/" target="_blank" rel="noopener noreferrer" className="text-tower-neon hover:underline">beausterling.xyz</a>
           </p>
         </div>
       </footer>
