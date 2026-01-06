@@ -1,5 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { generateDailyBadIdea } from "../_shared/gemini.ts";
+import { generateDailyBadIdea, PreviousIdeaContext } from "../_shared/gemini.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
@@ -17,11 +17,6 @@ Deno.serve(async (req) => {
     const targetDate = dateParam ? new Date(dateParam) : new Date();
     const dateString = targetDate.toISOString().split('T')[0];
 
-    // Calculate seed
-    const seed = targetDate.getUTCFullYear() * 10000 +
-                 (targetDate.getUTCMonth() + 1) * 100 +
-                 targetDate.getUTCDate();
-
     // Initialize Supabase client with anon key (public access)
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -30,7 +25,7 @@ Deno.serve(async (req) => {
 
     // Try to get idea from database
     const { data: existingIdea, error: fetchError } = await supabaseClient
-      .from('ideas')
+      .from('daily_ideas')
       .select('*')
       .eq('date', dateString)
       .single();
@@ -53,9 +48,32 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Fetch previous day's idea to ensure variety
+    const previousDate = new Date(targetDate);
+    previousDate.setUTCDate(previousDate.getUTCDate() - 1);
+    const previousDateString = previousDate.toISOString().split('T')[0];
+
+    const { data: previousIdeaData } = await supabaseClient
+      .from('daily_ideas')
+      .select('title, pitch, issue_number')
+      .eq('date', previousDateString)
+      .single();
+
+    // Calculate issue number (previous + 1, or 1 if no previous)
+    const issueNumber = previousIdeaData?.issue_number ? previousIdeaData.issue_number + 1 : 1;
+
+    // Prepare context for generation
+    const previousContext: PreviousIdeaContext | undefined = previousIdeaData ? {
+      title: previousIdeaData.title,
+      pitchPreview: previousIdeaData.pitch.split(' ').slice(0, 20).join(' ')
+    } : undefined;
+
     // If not in database, generate on-demand (fallback for historical dates)
-    console.log(`Idea not found in DB for ${dateString}, generating on-demand with seed: ${seed}`);
-    const idea = await generateDailyBadIdea(targetDate);
+    console.log(`Idea not found in DB for ${dateString}, generating on-demand`);
+    if (previousContext) {
+      console.log(`Previous idea context: "${previousContext.title}"`);
+    }
+    const idea = await generateDailyBadIdea(targetDate, previousContext);
 
     // Try to store in database (use service role for write access)
     const supabaseServiceClient = createClient(
@@ -64,10 +82,10 @@ Deno.serve(async (req) => {
     );
 
     await supabaseServiceClient
-      .from('ideas')
+      .from('daily_ideas')
       .insert({
         date: dateString,
-        seed: seed,
+        issue_number: issueNumber,
         title: idea.title,
         pitch: idea.pitch,
         fatal_flaw: idea.fatalFlaw,

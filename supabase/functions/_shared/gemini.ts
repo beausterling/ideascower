@@ -9,7 +9,7 @@ if (!GEMINI_API_KEY) {
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 // Configuration for complex reasoning tasks
-export const REASONING_MODEL = "gemini-2.0-flash";
+export const REASONING_MODEL = "gemini-2.5-flash";
 export const THINKING_BUDGET = 8192;
 export const DEVILS_ADVOCATE_MAX_TOKENS = 2048; // Reasonable limit per message
 
@@ -32,11 +32,92 @@ export interface BadIdea {
   verdict: string;
 }
 
+export interface PreviousIdeaContext {
+  title: string;
+  pitchPreview: string; // first 20 words of the pitch
+}
+
+/**
+ * Easter calculation using the Anonymous Gregorian algorithm.
+ * Returns the month (0-indexed) and day of Easter for a given year.
+ */
+function calculateEaster(year: number): { month: number; day: number } {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31) - 1; // 0-indexed
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return { month, day };
+}
+
+/**
+ * Checks if a date is a holiday and returns its name, or null if not a holiday.
+ */
+function getHolidayName(date: Date): string | null {
+  const month = date.getUTCMonth(); // 0-indexed
+  const day = date.getUTCDate();
+  const dayOfWeek = date.getUTCDay(); // 0 = Sunday
+
+  // Fixed-date holidays
+  if (month === 0 && day === 1) return "New Year's Day";
+  if (month === 1 && day === 14) return "Valentine's Day";
+  if (month === 2 && day === 8) return "International Women's Day";
+  if (month === 2 && day === 17) return "St. Patrick's Day";
+  if (month === 3 && day === 1) return "April Fools' Day";
+  if (month === 3 && day === 22) return "Earth Day";
+  if (month === 4 && day === 5) return "Cinco de Mayo";
+  if (month === 6 && day === 4) return "Independence Day";
+  if (month === 9 && day === 31) return "Halloween";
+  if (month === 11 && day === 25) return "Christmas";
+  if (month === 11 && day === 31) return "New Year's Eve";
+
+  // Variable-date holidays
+  // Mother's Day: 2nd Sunday of May
+  if (month === 4 && dayOfWeek === 0 && day >= 8 && day <= 14) return "Mother's Day";
+
+  // Father's Day: 3rd Sunday of June
+  if (month === 5 && dayOfWeek === 0 && day >= 15 && day <= 21) return "Father's Day";
+
+  // Memorial Day: Last Monday of May
+  if (month === 4 && dayOfWeek === 1 && day >= 25) return "Memorial Day";
+
+  // Thanksgiving: 4th Thursday of November
+  if (month === 10 && dayOfWeek === 4 && day >= 22 && day <= 28) return "Thanksgiving";
+
+  // Indigenous Peoples' Day: 2nd Monday of October
+  if (month === 9 && dayOfWeek === 1 && day >= 8 && day <= 14) return "Indigenous Peoples' Day";
+
+  // Election Day: 1st Tuesday after 1st Monday of November (day 2-8)
+  if (month === 10 && dayOfWeek === 2 && day >= 2 && day <= 8) return "Election Day";
+
+  // Grandparents Day: 1st Sunday after Labor Day (Labor Day is 1st Monday of Sept)
+  if (month === 8 && dayOfWeek === 0 && day >= 7 && day <= 13) return "Grandparents Day";
+
+  // Easter: Complex calculation
+  const easter = calculateEaster(date.getUTCFullYear());
+  if (month === easter.month && day === easter.day) return "Easter";
+
+  return null;
+}
+
 /**
  * Generates a "Bad Idea of the Day" using Gemini.
- * Uses a deterministic seed based on the provided date.
+ * Optionally takes the previous day's idea to ensure variety.
+ * On holidays, generates themed ideas.
  */
-export async function generateDailyBadIdea(targetDate: Date): Promise<BadIdea> {
+export async function generateDailyBadIdea(
+  targetDate: Date,
+  previousIdea?: PreviousIdeaContext
+): Promise<BadIdea> {
   const schema = {
     type: "object",
     properties: {
@@ -48,21 +129,31 @@ export async function generateDailyBadIdea(targetDate: Date): Promise<BadIdea> {
     required: ["title", "pitch", "fatalFlaw", "verdict"]
   };
 
-  // Calculate deterministic seed based on UTC date (YYYYMMDD)
-  const seed = targetDate.getUTCFullYear() * 10000 +
-               (targetDate.getUTCMonth() + 1) * 100 +
-               targetDate.getUTCDate();
+  // Check if today is a holiday
+  const holidayName = getHolidayName(targetDate);
+
+  // Build the prompt
+  let prompt = "Generate a startup idea that sounds clever and profitable on the surface, but has a catastrophic logical, economic, or social flaw that makes it a terrible business. Do not make it obviously a joke; make it a 'trap' idea. Analyze the flaw deeply.";
+
+  // Add holiday context if applicable
+  if (holidayName) {
+    prompt += `\n\nToday is ${holidayName}! Generate an idea that cleverly relates to or exploits this holiday.`;
+  }
+
+  // Add previous idea context to ensure variety
+  if (previousIdea) {
+    prompt += `\n\nIMPORTANT: Yesterday's idea was "${previousIdea.title}" with the pitch: "${previousIdea.pitchPreview}..." - You MUST generate a completely different concept in a different industry or domain. Do not use similar themes, business models, or target markets.`;
+  }
 
   try {
     const response = await ai.models.generateContent({
       model: REASONING_MODEL,
-      contents: "Generate a startup idea that sounds revolutionary and profitable on the surface, but has a catastrophic logical, economic, or social flaw that makes it a terrible business. Do not make it obviously a joke; make it a 'trap' idea. Analyze the flaw deeply.",
+      contents: prompt,
       config: {
         thinkingConfig: { thinkingBudget: THINKING_BUDGET },
         responseMimeType: "application/json",
         responseSchema: schema,
-        seed: seed,
-        temperature: 0
+        temperature: 0.7
       }
     });
 
